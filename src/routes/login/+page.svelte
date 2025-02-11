@@ -6,6 +6,11 @@
     let username = '';
     let password = '';
     let errorMessage = '';
+    let socialLoading = {
+        google: false,
+        kakao: false,
+        apple: false
+    };
 
     async function handleLogin() {
         try {
@@ -26,34 +31,55 @@
     }
 
     async function loginWithGoogle() {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: '/auth/callback'
+        try {
+            socialLoading.google = true;
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: '/auth/callback'
+                }
+            });
+            if (error) {
+                errorMessage = error.message;
+                socialLoading.google = false;
             }
-        });
-        if (error) {
+        } catch (error: any) {
             errorMessage = error.message;
+            socialLoading.google = false;
         }
     }
 
     async function loginWithKakao() {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'kakao',
-            options: { redirectTo: '/auth/callback' }
-        });
-        if (error) {
+        try {
+            socialLoading.kakao = true;
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'kakao',
+                options: { redirectTo: '/auth/callback' }
+            });
+            if (error) {
+                errorMessage = error.message;
+                socialLoading.kakao = false;
+            }
+        } catch (error: any) {
             errorMessage = error.message;
+            socialLoading.kakao = false;
         }
     }
 
     async function loginWithApple() {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'apple',
-            options: { redirectTo: '/auth/callback' }
-        });
-        if (error) {
+        try {
+            socialLoading.apple = true;
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'apple',
+                options: { redirectTo: '/auth/callback' }
+            });
+            if (error) {
+                errorMessage = error.message;
+                socialLoading.apple = false;
+            }
+        } catch (error: any) {
             errorMessage = error.message;
+            socialLoading.apple = false;
         }
     }
 </script>
@@ -86,9 +112,10 @@
                     {errorMessage}
                 </div>
             {/if}
-            <button type="submit" disabled={loading}>
+            <button type="submit" disabled={loading} class="submit-btn">
                 {#if loading}
-                    <span>로그인 중...</span>
+                    <div class="spinner"></div>
+                    <span>로그인 중</span>
                 {:else}
                     <span>로그인</span>
                 {/if}
@@ -96,17 +123,32 @@
             <div class="divider">
                 <span>또는 아래로 계속하기</span>
             </div>
-            <button type="button" class="social-btn google-btn" on:click={loginWithGoogle}>
-                <img src="/images/google.svg" alt="Google logo" />
-                Google로 계속하기
+            <button type="button" class="social-btn google-btn" on:click={loginWithGoogle} disabled={socialLoading.google}>
+                {#if socialLoading.google}
+                    <div class="spinner social-spinner"></div>
+                    <span>연결 중</span>
+                {:else}
+                    <img src="/images/google.svg" alt="Google logo" />
+                    <span>Google로 계속하기</span>
+                {/if}
             </button>
-            <button type="button" class="social-btn kakao-btn" on:click={loginWithKakao}>
-                <img src="/images/kakao.svg" alt="Kakao logo" />
-                카카오로 계속하기
+            <button type="button" class="social-btn kakao-btn" on:click={loginWithKakao} disabled={socialLoading.kakao}>
+                {#if socialLoading.kakao}
+                    <div class="spinner social-spinner"></div>
+                    <span>연결 중</span>
+                {:else}
+                    <img src="/images/kakao.svg" alt="Kakao logo" />
+                    <span>카카오로 계속하기</span>
+                {/if}
             </button>
-            <button type="button" class="social-btn apple-btn" on:click={loginWithApple}>
-                <img src="/images/apple.svg" alt="Apple logo" />
-                Apple로 계속하기
+            <button type="button" class="social-btn apple-btn" on:click={loginWithApple} disabled={socialLoading.apple}>
+                {#if socialLoading.apple}
+                    <div class="spinner social-spinner"></div>
+                    <span>연결 중</span>
+                {:else}
+                    <img src="/images/apple.svg" alt="Apple logo" />
+                    <span>Apple로 계속하기</span>
+                {/if}
             </button>
         </form>
     </div>
@@ -123,8 +165,10 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        min-height: 100vh;
+        height: 100vh;
         padding: 1rem;
+        box-sizing: border-box;
+        overflow: auto;
     }
 
     .login-container {
@@ -169,13 +213,38 @@
         transition: background-color 0.15s ease;
     }
 
-    button[type="submit"] {
+    .submit-btn {
         background-color: #064B45;
         color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 2.75rem;
     }
 
-    button[type="submit"]:hover {
+    .submit-btn:hover {
         background-color: #053c37;
+    }
+
+    .submit-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .spinner {
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
     }
 
     .divider {
@@ -218,6 +287,16 @@
     .social-btn img {
         width: 18px;
         height: 18px;
+    }
+
+    .social-spinner {
+        border-color: rgba(0, 0, 0, 0.2);
+        border-top-color: currentColor;
+    }
+
+    .apple-btn .social-spinner {
+        border-color: rgba(255, 255, 255, 0.2);
+        border-top-color: white;
     }
 
     /* Google 버튼 스타일 */
