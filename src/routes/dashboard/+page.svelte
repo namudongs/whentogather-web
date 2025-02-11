@@ -7,13 +7,25 @@
     let userName: string | null | undefined = null;
 
     onMount(async () => {
-        const { data } = await supabase.auth.getSession();
-        if (!data?.session) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session) {
             goto('/login');
             return;
         }
-        userEmail = data.session.user.email;
-        userName = data.session.user.user_metadata?.full_name;
+
+        const user = sessionData.session.user;
+        userEmail = user.email;
+
+        // 프로필 정보 가져오기
+        const { data: profileData } = await supabase
+            .from('profiles')
+            .select('name')
+            .eq('id', user.id)
+            .single();
+
+        if (profileData) {
+            userName = profileData.name;
+        }
     });
 
     async function handleSignOut() {

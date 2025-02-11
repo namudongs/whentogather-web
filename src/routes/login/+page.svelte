@@ -1,11 +1,23 @@
 <script lang="ts">
     import { supabase } from '$lib/supabaseClient';
     import { goto } from '$app/navigation';
+    import { fade, fly } from 'svelte/transition';
+    import { quintOut } from 'svelte/easing';
 
     let loading = false;
-    let username = '';
+    let email = '';
     let password = '';
     let errorMessage = '';
+    let isEmailFocused = false;
+    let isPasswordFocused = false;
+    let isEmailValid = true;
+    let isPasswordValid = true;
+
+    $: {
+        const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+        isEmailValid = !email || emailRegex.test(email);
+        isPasswordValid = !password || password.length >= 6;
+    }
     let socialLoading = {
         google: false,
         kakao: false,
@@ -16,15 +28,36 @@
         try {
             loading = true;
             errorMessage = '';
-            const { error } = await supabase.auth.signInWithPassword({
-                email: username,
+
+            // 이메일 형식 검사
+            const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+            if (!emailRegex.test(email)) {
+                errorMessage = '유효한 이메일 주소를 입력해주세요.';
+                loading = false;
+                return;
+            }
+
+            // 로그인 시도
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email.toLowerCase().trim(), // 이메일 정규화
                 password
             });
 
-            if (error) throw error;
-            goto('/dashboard');
+            if (error) {
+                if (error.message === 'Invalid login credentials') {
+                    errorMessage = '이메일 또는 비밀번호가 일치하지 않습니다.';
+                } else {
+                    errorMessage = error.message;
+                }
+                return;
+            }
+
+            if (data?.user) {
+                goto('/dashboard');
+            }
         } catch (error: any) {
-            errorMessage = error.message;
+            errorMessage = '로그인 중 오류가 발생했습니다.';
+            console.error('Login error:', error);
         } finally {
             loading = false;
         }
@@ -87,20 +120,25 @@
 <main>
     <div class="login-container">
         <h1>로그인</h1>
-        <form on:submit|preventDefault={handleLogin}>
+        <form on:submit|preventDefault={handleLogin} id="login-form">
             <input 
-                type="text" 
-                bind:value={username} 
-                placeholder="아이디 또는 이메일" 
+                type="email" 
+                bind:value={email} 
+                placeholder="이메일" 
                 required 
-                autocomplete="username"
+                name="email"
+                autocomplete="email"
+                form="login-form"
             />
             <input 
                 type="password" 
                 bind:value={password} 
                 placeholder="비밀번호" 
                 required 
+                name="current-password"
                 autocomplete="current-password"
+                minlength="6"
+                form="login-form"
             />
             {#if errorMessage}
                 <div class="error">
@@ -120,6 +158,9 @@
                     <span>로그인</span>
                 {/if}
             </button>
+            <div class="signup-link">
+                계정이 없으신가요? <a href="/signup">회원가입하기</a>
+            </div>
             <div class="divider">
                 <span>또는 아래로 계속하기</span>
             </div>
@@ -287,6 +328,23 @@
     .social-btn img {
         width: 18px;
         height: 18px;
+    }
+
+    .signup-link {
+        text-align: center;
+        font-size: 0.875rem;
+        color: #4b5563;
+        margin-bottom: 0rem;
+    }
+
+    .signup-link a {
+        color: #064B45;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .signup-link a:hover {
+        text-decoration: underline;
     }
 
     .social-spinner {
