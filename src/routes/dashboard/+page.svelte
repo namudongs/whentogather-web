@@ -165,7 +165,7 @@
     
   {#if loading}
     <div class="global-spinner">
-      <Spinner />
+      <Spinner size="large" />
     </div>
   {:else}
     <div class="dashboard-container" in:fly="{{ y: 50, duration: 400, delay: 200 }}" out:fade="{{ duration: 200 }}">

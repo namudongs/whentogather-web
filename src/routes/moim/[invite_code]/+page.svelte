@@ -180,7 +180,7 @@
 
 {#if loading}
   <div class="global-spinner">
-    <Spinner />
+    <Spinner size="large" />
   </div>
 {:else}
   <div class="moim-container">
@@ -303,7 +303,7 @@
   </div>
 {/if}
 
-<BottomSheet show={showJoinModal} onClose={() => goto('/dashboard')} title="모임 참여">
+<BottomSheet show={showJoinModal} onClose={() => goto('/dashboard')} title="모임 참여" blurBackground={true}>
   <div class="join-sheet-content">
     <p class="join-description">이 모임에 참여하시겠습니까?</p>
     <div class="join-description-sub">모임에 참여하면 일정 조율에 참여할 수 있습니다.</div>

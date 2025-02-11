@@ -1,5 +1,5 @@
 <script>
-  export let size = 'normal'; // 'normal' | 'small'
+  export let size = 'normal'; // 'normal' | 'small' | 'large'
 </script>
 
 <div class="spinner-container">
@@ -26,6 +26,12 @@
     width: 1rem;
     height: 1rem;
     border-width: 1.5px;
+  }
+
+  .spinner.large {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-width: 3px;
   }
 
   @keyframes spin {

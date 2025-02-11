@@ -5,6 +5,7 @@
   export let show = false;
   export let onClose: () => void;
   export let title = '';
+  export let blurBackground = false;
 </script>
 
 {#if show}
@@ -12,6 +13,7 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div 
     class="bottom-sheet-overlay" 
+    class:blur-background={blurBackground}
     on:click={onClose} 
     transition:fade={{ duration: 200 }}
   >
@@ -50,6 +52,11 @@
     align-items: flex-end;
     justify-content: center;
     z-index: 1000;
+  }
+
+  .blur-background {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
   .bottom-sheet {
