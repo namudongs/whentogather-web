@@ -51,35 +51,26 @@
 
 /* 기본 폰트 설정 */
 :root {
-    /* 현재 기본 폰트를 NanumSquareNeo로 가정 */
     --main-font: 'NanumSquareNeo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    
-    /* 가중치별 폰트(예: Bold, ExtraBold 등)도 변수화해 둠 */
     --font-light: 'NanumSquareNeoLight';
     --font-regular: 'NanumSquareNeo';
     --font-bold: 'NanumSquareNeoBold';
     --font-extrabold: 'NanumSquareNeoExtraBold';
     --font-heavy: 'NanumSquareNeoHeavy';
-  }
-  
-  /* Pretendard로 전환할 때를 대비한 변수 세트 */
-  :root.font-pretendard {
+    /*
     --main-font: 'Pretendard Variable', Pretendard, Roboto, 'Noto Sans KR', 'Segoe UI', 'Malgun Gothic', sans-serif;
-    
-    /* Pretendard도 가중치별 폰트가 있다면 아래 변수도 같이 변경 */
     --font-light: 'Pretendard Variable';
     --font-regular: 'Pretendard Variable';
     --font-bold: 'Pretendard Variable';
     --font-extrabold: 'Pretendard Variable';
     --font-heavy: 'Pretendard Variable';
+    */
   }
   
-  /* 실제로 적용되는 곳 */
   body, html {
     font-family: var(--main-font);
   }
   
-  /* 타이포그래피 클래스 */
   .font-light {
     font-family: var(--font-light);
   }
