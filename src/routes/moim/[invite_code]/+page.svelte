@@ -10,18 +10,18 @@
   let errorMessage = '';
   let loading = true;
 
-  // URL 파라미터에서 모임 ID 추출
-  let moimId = '';
-  $: moimId = $page.params.id;
+  // URL 파라미터에서 초대 코드를 추출 (파일 이름은 [invite_code].svelte)
+  let inviteCode = '';
+  $: inviteCode = $page.params.invite_code;
 
   onMount(async () => {
     try {
       loading = true;
-      // 1) 모임 정보 조회
+      // 1) 모임 정보 조회 (invite_code로 조회)
       const { data: moimData, error: moimError } = await supabase
         .from('moims')
         .select('*')
-        .eq('id', moimId)
+        .eq('invite_code', inviteCode)
         .single();
       if (moimError || !moimData) {
         errorMessage = moimError?.message || '모임 정보를 불러오지 못했습니다.';
@@ -29,11 +29,11 @@
       }
       moim = moimData;
 
-      // 2) 참여자 목록 조회
+      // 2) 참여자 목록 조회 (DB에서는 moim_id를 사용하여 조회)
       const { data: partsData, error: partsError } = await supabase
         .from('moim_participants')
         .select('user_id, role')
-        .eq('moim_id', moimId);
+        .eq('moim_id', moim.id);
       if (partsError) {
         errorMessage = partsError.message;
         return;
@@ -60,7 +60,7 @@
       const { data: meetupsData, error: meetupsError } = await supabase
         .from('meetups')
         .select('*')
-        .eq('moim_id', moimId)
+        .eq('moim_id', moim.id)
         .order('created_at', { ascending: false });
       if (meetupsError) {
         errorMessage = meetupsError.message;
@@ -79,12 +79,13 @@
   }
 
   function createMeetup() {
-    goto(`/moim/${moimId}/meetup/new`);
+    // 초대 코드 기반 URL을 그대로 사용하여 만남 추가 페이지로 이동합니다.
+    goto(`/moim/${inviteCode}/meetup/new`);
   }
 </script>
 
 {#if loading}
-  <!-- 전역 스피너 (전체 로딩 상태) -->
+  <!-- 전역 스피너 -->
   <div class="global-spinner">
     <div class="spinner"></div>
   </div>
@@ -138,7 +139,7 @@
         <section class="meetups-box info-box">
           <div class="meetups-header">
             <h2 class="section-title">만남 목록</h2>
-            <button class="add-meetup-btn" on:click={createMeetup}>
+            <button class="add-meetup-btn" on:click={createMeetup} aria-label="만남 추가">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -180,8 +181,9 @@
 <style>
   :global(body) {
     margin: 0;
-    background: white;
+    background: #f5f5f5;
     color: #333;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
   }
   
   /* 전역 스피너 */
@@ -222,8 +224,6 @@
   .moim-header {
     display: flex;
     gap: 1rem;
-    top: 0;
-    background: white;
     padding: 1rem 0;
     border-bottom: 1px solid #f0f0f0;
     margin-bottom: 2rem;
@@ -243,10 +243,10 @@
   }
   
   .moim-title {
-    font-size: 1.35rem;
+    font-size: 1.5rem;
     margin: 0;
     text-align: left;
-    color: #064B45;
+    color: #333;
     flex: 1;
   }
   
@@ -256,7 +256,7 @@
     gap: 1.5rem;
   }
   
-  /* 정보 박스 스타일 (모임 정보, 참여자, 만남 등) */
+  /* 정보 박스 스타일 */
   .info-box {
     background: #fafafa;
     padding: 1.5rem;
@@ -288,8 +288,9 @@
   
   .section-title {
     font-size: 1.25rem;
+    font-weight: 600;
     margin-bottom: 0.75rem;
-    color: #064B45;
+    color: #333;
   }
   
   .participants-list {
@@ -395,7 +396,7 @@
     transition: background-color 0.2s;
     align-items: center;
     font-size: 0.8rem;
-    margin-top: -1rem
+    margin-top: -0.5rem;
   }
   
   .add-meetup-btn:hover {

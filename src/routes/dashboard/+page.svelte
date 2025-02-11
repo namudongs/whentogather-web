@@ -2,13 +2,13 @@
     import { onMount } from 'svelte';
     import { supabase } from '$lib/supabaseClient';
     import { goto } from '$app/navigation';
-  
+    
     let userEmail: string | null | undefined = null;
     let userName: string | null | undefined = null;
     let meetings: any[] = [];
     let errorMessage = '';
     let loading = true; // 전역 로딩 상태
-  
+    
     onMount(async () => {
       try {
         loading = true;
@@ -21,7 +21,7 @@
         }
         const user = sessionData.session.user;
         userEmail = user.email;
-  
+    
         // 2) 프로필 정보 가져오기
         const { data: profileData } = await supabase
           .from('profiles')
@@ -48,24 +48,25 @@
         loading = false;
       }
     });
-  
+    
     async function handleSignOut() {
       const { error } = await supabase.auth.signOut();
       if (!error) {
         goto('/login');
       }
     }
-  
+    
     function createMeeting() {
       goto('/moim/new');
     }
-  
-    // 모임 셀 클릭 시 모임 상세 페이지로 이동하는 함수
-    function goToMeetingDetail(meetingId: string) {
-      goto(`/moim/${meetingId}`);
+    
+    // 모임 셀 클릭 시, 모임 상세 페이지로 이동하는 함수 (UUID 대신 초대 코드 사용)
+    function goToMeetingDetail(meeting: any) {
+      // 모임 데이터에 invite_code가 있다고 가정합니다.
+      goto(`/moim/${meeting.invite_code}`);
     }
   </script>
-  
+    
   {#if loading}
     <!-- 전역 스피너 영역 -->
     <div class="global-spinner">
@@ -91,7 +92,7 @@
           </button>
         </div>
       </header>
-    
+      
       <main class="dashboard-content">
         <section class="quick-actions">
           <button class="action-btn create-meeting font-bold" on:click={createMeeting}>
@@ -102,7 +103,7 @@
             새로운 모임 만들기
           </button>
         </section>
-    
+      
         <section class="meetings-section">
           <h2 class="font-bold">내 모임</h2>
           {#if errorMessage}
@@ -111,7 +112,7 @@
             <ul class="meetings-list">
               {#each meetings as meeting}
                 <li class="meeting-item">
-                  <button type="button" class="meeting-button" on:click={() => goToMeetingDetail(meeting.id)}>
+                  <button type="button" class="meeting-button" on:click={() => goToMeetingDetail(meeting)}>
                     <h3 class="meeting-title">{meeting.title}</h3>
                     {#if meeting.description}
                       <p class="meeting-description">{meeting.description}</p>
@@ -140,10 +141,11 @@
     
   <style>
     :global(body) {
-    margin: 0;
-    background: white;
-    color: #333;
-  }
+      margin: 0;
+      background: white;
+      color: #333;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
     
     /* 전역 스피너 */
     .global-spinner {
@@ -172,7 +174,6 @@
       to { transform: rotate(360deg); }
     }
     
-    /* 모임 컨테이너 (대시보드 스타일) */
     .dashboard-container {
       max-width: 800px;
       margin: 2rem auto;
@@ -267,7 +268,7 @@
     }
     
     .meetings-section h2 {
-      font-size: 1.1rem;
+      font-size: 1.25rem;
       font-weight: 600;
       margin-bottom: 1rem;
       color: #333;
@@ -275,14 +276,12 @@
     
     .meetings-list {
       list-style: none;
-      padding: 0;
-      margin: 0;
+      margin-right: 2rem;
     }
     
-    /* meeting-item 내부의 버튼로 교체하여 접근성 문제 해결 */
     .meeting-item {
       border: none;
-      padding: 0;
+      padding-bottom: 0.8rem;
       background: none;
     }
     
@@ -339,19 +338,5 @@
       color: #999;
       margin-top: 0.25rem;
     }
-    
-    @media (max-width: 640px) {
-      .dashboard-container {
-        padding: 0 1rem;
-      }
-      .header-content {
-        padding: 0 1rem;
-      }
-      .user-info h1 {
-        font-size: 1.25rem;
-      }
-      .empty-state {
-        padding: 2rem;
-      }
-    }
+
   </style>

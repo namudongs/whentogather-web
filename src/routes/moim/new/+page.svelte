@@ -1,6 +1,11 @@
 <script lang="ts">
   import { supabase } from '$lib/supabaseClient';
   import { goto } from '$app/navigation';
+  import { customAlphabet } from 'nanoid';
+
+  // 영문 대소문자와 숫자를 사용하여 8글자 초대 코드를 생성하는 nanoid 생성기
+  const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+  const nanoid = customAlphabet(alphabet, 8);
 
   // 입력 필드: 모임 제목과 설명
   let title = '';
@@ -24,13 +29,17 @@
       return;
     }
 
-    // 2) 모임 생성 (moims 테이블)
+    // 2) 초대 코드 생성 (8글자)
+    const inviteCode = nanoid(); // 예: "aB3dE9zK"
+
+    // 3) 모임 생성 (moims 테이블에 invite_code 포함)
     const { data: newMoim, error: moimError } = await supabase
       .from('moims')
       .insert({
         title,
         description,
-        creator_id: user.id
+        creator_id: user.id,
+        invite_code: inviteCode
       })
       .select()
       .single();
@@ -41,8 +50,7 @@
       return;
     }
 
-    // 3) 모임에 자신을 creator로 추가 (moim_participants 테이블)
-    //    RLS 정책에 의해, creator는 관리 정책을 통해 삽입되므로 role은 'creator'로 지정
+    // 4) 모임에 자신을 creator로 추가 (moim_participants 테이블)
     const { data: participant, error: participantError } = await supabase
       .from('moim_participants')
       .insert({
@@ -59,8 +67,8 @@
       return;
     }
 
-    // 4) 모임 상세 페이지로 이동 (예: /moim/[id])
-    goto(`/moim/${newMoim.id}`);
+    // 5) 초대 코드 기반 모임 상세 페이지로 이동
+    goto(`/moim/${inviteCode}`);
   }
 </script>
 
@@ -76,21 +84,14 @@
       {#if errorMessage}
         <p class="error-message">{errorMessage}</p>
       {/if}
-
       <div class="form-group">
         <label for="title">모임 제목</label>
         <input id="title" type="text" bind:value={title} placeholder="예: 동아리 회의" />
       </div>
-
       <div class="form-group">
         <label for="description">모임 설명 (선택)</label>
-        <textarea
-          id="description"
-          bind:value={description}
-          placeholder="모임에 대한 간단한 소개 또는 설명을 작성해 주세요."
-        ></textarea>
+        <textarea id="description" bind:value={description} placeholder="모임에 대한 간단한 소개 또는 설명을 작성해 주세요."></textarea>
       </div>
-
       <button type="submit" class="submit-button" disabled={loading}>
         {loading ? '생성 중...' : '모임 생성하기'}
       </button>
@@ -103,6 +104,7 @@
     margin: 0;
     background: white;
     color: #333;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
   }
 
   .dashboard-container {
@@ -125,15 +127,8 @@
     max-width: 800px;
     margin: 0 auto;
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
-  }
-
-  .header-content h1 {
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: #333;
   }
 
   .dashboard-content {
