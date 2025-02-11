@@ -151,10 +151,30 @@
     }
 </script>
 
-<main>
-    <div class="signup-container">
-        <h1 class="font-extrabold">회원가입</h1>
-        <form on:submit|preventDefault={handleSignup}>
+<div class="moim-container" in:fly="{{ y: 50, duration: 400, delay: 200 }}" out:fade="{{ duration: 200 }}">
+    <div class="moim-content-wrapper">
+        <header class="moim-header">
+            <div class="brand-section">
+                <div class="logo-container">
+                    <svg class="logo" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="24" cy="24" r="20" fill="#064B45"/>
+                        <path d="M24 12V24L32 28" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                    <h1 class="logo-text font-extrabold">언제모여</h1>
+                </div>
+                <p class="intro-text">모임 일정 조율을 쉽고 편하게</p>
+                <div class="features">
+                    <span>반복 모임 최적화</span>
+                    <span class="dot"></span>
+                    <span>캘린더 연동</span>
+                    <span class="dot"></span>
+                    <span>간편 초대</span>
+                </div>
+            </div>
+        </header>
+        
+        <main class="moim-content">
+            <form on:submit|preventDefault={handleSignup} class="signup-form">
             <input 
                 type="text" 
                 bind:value={username} 
@@ -211,45 +231,113 @@
             <div class="login-link">
                 이미 계정이 있으신가요? <a href="/login">로그인하기</a>
             </div>
-        </form>
+            </form>
+        </main>
     </div>
-</main>
+</div>
 
 <style>
-    main {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        padding: 1rem;
-        box-sizing: border-box;
-        overflow: auto;
-    }
-
-    .signup-container {
+    .moim-container {
         width: 100%;
-        max-width: 320px;
+        min-height: 100vh;
+        background: white;
+        display: flex;
+        flex-direction: column;
     }
 
-    h1 {
-        color: #064B45;
+    .moim-content-wrapper {
+        max-width: 500px;
+        margin: 0 auto;
+        padding: 1rem;
+        width: 100%;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .moim-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2.5rem 0 2rem;
+        margin-bottom: 1rem;
         text-align: center;
-        margin-bottom: 2rem;
+    }
+
+    .brand-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .logo-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .logo {
+        width: 28px;
+        height: 28px;
+    }
+
+    .logo-text {
         font-size: 1.5rem;
+        color: #064B45;
+        margin: 0;
+    }
+
+    .intro-text {
+        font-size: 0.95rem;
+        color: #4b5563;
+        margin: 0;
+    }
+
+    .features {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: center;
+        font-size: 0.85rem;
+        color: #6b7280;
+        line-height: 1;
+    }
+
+    .dot {
+        width: 3px;
+        height: 3px;
+        background-color: #9ca3af;
+        border-radius: 50%;
+    }
+
+    .moim-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 360px;
+        margin: 0 auto;
     }
 
     form {
         display: flex;
         flex-direction: column;
         gap: 1rem;
+        width: 100%;
     }
 
     input {
-        padding: 0.75rem;
+        width: 100%;
+        padding: 0.875rem;
         border: 1px solid #e2e8f0;
-        border-radius: 0.375rem;
-        font-size: 0.875rem;
-        transition: border-color 0.15s ease;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.15s ease;
+        -webkit-appearance: none;
+        appearance: none;
+        box-sizing: border-box;
     }
 
     input:focus {
@@ -258,19 +346,22 @@
     }
 
     .submit-btn {
+        width: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
         background-color: #064B45;
         color: white;
-        padding: 0.75rem;
+        padding: 1rem;
         border: none;
-        border-radius: 0.375rem;
-        font-size: 0.875rem;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 500;
         cursor: pointer;
-        transition: background-color 0.15s ease;
-        min-height: 2.75rem;
+        transition: all 0.15s ease;
+        min-height: 3rem;
+        margin-top: 0.5rem;
     }
 
     .submit-btn:hover {
@@ -301,9 +392,9 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.75rem;
-        border-radius: 0.375rem;
-        font-size: 0.875rem;
+        padding: 1rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
         background-color: #f7fee7;
         color: #3f6212;
     }
@@ -315,8 +406,9 @@
 
     .login-link {
         text-align: center;
-        font-size: 0.875rem;
+        font-size: 0.9rem;
         color: #4b5563;
+        margin-top: 0.5rem;
     }
 
     .login-link a {
