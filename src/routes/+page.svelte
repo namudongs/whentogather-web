@@ -14,7 +14,7 @@
 </script>
 
 <div class="loading">
-    <p>Loading...</p>
+    <p>...</p>
 </div>
 
 <style>
