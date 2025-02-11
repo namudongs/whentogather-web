@@ -5,6 +5,12 @@
     import { fade, fly, slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
     import { customAlphabet } from 'nanoid';
+    import type { Moim, User } from '$lib/types';
+    import Logo from '$lib/components/Logo.svelte';
+    import Spinner from '$lib/components/Spinner.svelte';
+    import ErrorMessage from '$lib/components/ErrorMessage.svelte';
+    import BottomSheet from '$lib/components/BottomSheet.svelte';
+    import Button from '$lib/components/Button.svelte';
 
     // 모달 상태
     let isModalOpen = false;
@@ -158,9 +164,8 @@
   </script>
     
   {#if loading}
-    <!-- 전역 스피너 영역 -->
     <div class="global-spinner">
-      <div class="spinner"></div>
+      <Spinner />
     </div>
   {:else}
     <div class="dashboard-container" in:fly="{{ y: 50, duration: 400, delay: 200 }}" out:fade="{{ duration: 200 }}">
@@ -186,19 +191,19 @@
       
       <main class="dashboard-content">
         <section class="quick-actions">
-          <button class="action-btn create-meeting font-bold" on:click={openCreateModal}>
+          <Button variant="primary" on:click={openCreateModal}>
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
             새로운 모임 만들기
-          </button>
+          </Button>
         </section>
       
         <section class="meetings-section">
           <h2 class="font-bold">내 모임</h2>
           {#if errorMessage}
-            <p class="error">{errorMessage}</p>
+            <ErrorMessage message={errorMessage} />
           {:else if meetings && meetings.length > 0}
             <ul class="meetings-list">
               {#each meetings as meeting, i}
@@ -253,57 +258,47 @@
     </div>
   {/if}
 
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  {#if isModalOpen}
-    <div class="modal-backdrop" on:click={closeModal} transition:fade="{{ duration: 200 }}">
-      <div class="modal-sheet" on:click|stopPropagation transition:fly="{{ y: 200, duration: 300, easing: quintOut }}">
-        <header class="modal-header">
-          <h2 class="font-bold">새로운 모임 만들기</h2>
-          <button class="close-btn" on:click={closeModal} aria-label="Close modal">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </header>
-
-        <div class="modal-content">
-          <form on:submit|preventDefault={createMeeting} class="create-form">
-            {#if createError}
-              <p class="error-message">{createError}</p>
-            {/if}
-            <div class="form-group">
-              <label for="title">모임 제목</label>
-              <input
-                id="title"
-                type="text"
-                bind:value={title}
-                placeholder="예: 동아리 회의"
-                class="form-input"
-              />
-            </div>
-            <div class="form-group">
-              <label for="description">모임 설명 (선택)</label>
-              <textarea
-                id="description"
-                bind:value={description}
-                placeholder="모임에 대한 간단한 소개 또는 설명을 작성해 주세요."
-                class="form-input"
-                rows="4"
-              ></textarea>
-            </div>
-            <div class="form-actions">
-              <button type="button" class="cancel-btn" on:click={closeModal}>취소</button>
-              <button type="submit" class="submit-btn" disabled={isCreating}>
-                {isCreating ? '생성 중...' : '모임 생성하기'}
-              </button>
-            </div>
-          </form>
-        </div>
+  <BottomSheet show={isModalOpen} onClose={closeModal} title="새로운 모임 만들기">
+    <form on:submit|preventDefault={createMeeting} class="create-form">
+      {#if createError}
+        <ErrorMessage message={createError} />
+      {/if}
+      <div class="form-group">
+        <label for="title">모임 제목</label>
+        <input
+          id="title"
+          type="text"
+          bind:value={title}
+          placeholder="예: 동아리 회의"
+          class="form-input"
+        />
       </div>
-    </div>
-  {/if}
+      <div class="form-group">
+        <label for="description">모임 설명 (선택)</label>
+        <textarea
+          id="description"
+          bind:value={description}
+          placeholder="모임에 대한 간단한 소개 또는 설명을 작성해 주세요."
+          class="form-input"
+          rows="4"
+        ></textarea>
+      </div>
+      <div class="form-actions">
+        <Button
+          variant="outline"
+          on:click={closeModal}
+          flex={1}
+        >취소</Button>
+        <Button
+          variant="primary"
+          type="submit"
+          disabled={isCreating}
+          loading={isCreating}
+          flex={2}
+        >모임 생성하기</Button>
+      </div>
+    </form>
+  </BottomSheet>
     
   <style>
     :global(body) {
@@ -324,19 +319,6 @@
       align-items: center;
       justify-content: center;
       z-index: 1000;
-    }
-    
-    .spinner {
-      width: 60px;
-      height: 60px;
-      border: 6px solid rgba(0, 0, 0, 0.1);
-      border-top-color: #064B45;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
     }
     
     .dashboard-container {
@@ -407,35 +389,8 @@
     }
     
     .quick-actions {
-      display: flex;
+      display: grid;
       gap: 1rem;
-    }
-    
-    .action-btn {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 1rem;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      width: 100%;
-      justify-content: center;
-    }
-    
-    .create-meeting {
-      background: linear-gradient(135deg, #064B45 0%, #0a786e 100%);
-      color: white;
-      box-shadow: 0 2px 4px rgba(6, 75, 69, 0.2);
-    }
-    
-    .create-meeting:hover {
-      background: linear-gradient(135deg, #053c37 0%, #096459 100%);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(6, 75, 69, 0.3);
     }
     
     .meetings-section {
@@ -578,63 +533,6 @@
       margin-top: 0.25rem;
     }
 
-    /* Modal styles */
-    .modal-backdrop {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(4px);
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .modal-sheet {
-      background: white;
-      width: 100%;
-      max-width: 500px;
-      border-top-left-radius: 20px;
-      border-top-right-radius: 20px;
-      box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1.25rem 1.25rem 0 1.25rem;
-    }
-
-    .modal-header h2 {
-      margin: 0;
-      font-size: 1.25rem;
-      color: #1a1a1a;
-    }
-
-    .close-btn {
-      background: none;
-      border: none;
-      padding: 0.5rem;
-      margin: -0.5rem;
-      color: #666;
-      cursor: pointer;
-      transition: color 0.15s ease;
-    }
-
-    .close-btn:hover {
-      color: #1a1a1a;
-    }
-
-    .modal-content {
-      padding: 1.5rem;
-    }
-
     .create-form {
       display: flex;
       flex-direction: column;
@@ -680,54 +578,4 @@
       margin-top: 0.5rem;
     }
 
-    .cancel-btn {
-      flex: 1;
-      padding: 0.875rem;
-      border: 1px solid #e2e8f0;
-      background: white;
-      color: #4b5563;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .cancel-btn:hover {
-      background: #f8fafc;
-      border-color: #cbd5e1;
-    }
-
-    .submit-btn {
-      flex: 2;
-      padding: 0.875rem;
-      border: none;
-      background: linear-gradient(135deg, #064B45 0%, #0a786e 100%);
-      color: white;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .submit-btn:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(6, 75, 69, 0.2);
-    }
-
-    .submit-btn:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
-
-    .error-message {
-      padding: 0.75rem 1rem;
-      background: #fee2e2;
-      border: 1px solid #fecaca;
-      border-radius: 8px;
-      color: #dc2626;
-      font-size: 0.9rem;
-      margin: 0;
-    }
   </style>

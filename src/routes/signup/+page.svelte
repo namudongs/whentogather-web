@@ -3,6 +3,9 @@
     import { goto } from '$app/navigation';
     import { fade, fly } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
+    import Logo from '$lib/components/Logo.svelte';
+    import Spinner from '$lib/components/Spinner.svelte';
+    import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 
     // 닉네임 유효성 검사
     function validateUsername(value: string) {
@@ -155,13 +158,7 @@
     <div class="moim-content-wrapper">
         <header class="moim-header">
             <div class="brand-section">
-                <div class="logo-container">
-                    <svg class="logo" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="24" cy="24" r="20" fill="#064B45"/>
-                        <path d="M24 12V24L32 28" stroke="white" stroke-width="3" stroke-linecap="round"/>
-                    </svg>
-                    <h1 class="logo-text font-extrabold">언제모여</h1>
-                </div>
+                <Logo />
                 <p class="intro-text">모임 일정 조율을 쉽고 편하게</p>
                 <div class="features">
                     <span>반복 모임 최적화</span>
@@ -222,7 +219,7 @@
             {/if}
             <button type="submit" class="font-bold submit-btn" disabled={loading}>
                 {#if loading}
-                    <div class="spinner"></div>
+                    <Spinner size="small" />
                     <span>가입 중</span>
                 {:else}
                     <span>가입하기</span>
@@ -269,23 +266,6 @@
         flex-direction: column;
         align-items: center;
         gap: 1rem;
-    }
-
-    .logo-container {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .logo {
-        width: 28px;
-        height: 28px;
-    }
-
-    .logo-text {
-        font-size: 1.5rem;
-        color: #064B45;
-        margin: 0;
     }
 
     .intro-text {
@@ -372,22 +352,7 @@
         opacity: 0.7;
         cursor: not-allowed;
     }
-
-    .spinner {
-        width: 1rem;
-        height: 1rem;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-radius: 50%;
-        border-top-color: white;
-        animation: spin 0.6s linear infinite;
-    }
-
-    @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-
+    
     .message {
         display: flex;
         align-items: center;

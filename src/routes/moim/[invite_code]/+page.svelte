@@ -3,6 +3,11 @@
   import { supabase } from '$lib/supabaseClient';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
+  import type { Moim, User, Participant, Mannam } from '$lib/types';
+  import Spinner from '$lib/components/Spinner.svelte';
+  import ErrorMessage from '$lib/components/ErrorMessage.svelte';
+  import BottomSheet from '$lib/components/BottomSheet.svelte';
+  import Button from '$lib/components/Button.svelte';
 
   let moim: any = null;
   let participants: any[] = [];
@@ -173,10 +178,9 @@
   }
 </script>
 
-<!-- 로딩 스피너 -->
 {#if loading}
   <div class="global-spinner">
-    <div class="spinner"></div>
+    <Spinner />
   </div>
 {:else}
   <div class="moim-container">
@@ -299,26 +303,24 @@
   </div>
 {/if}
 
-<!-- 참여 여부를 묻는 바텀 시트 (참여하지 않은 경우) -->
-{#if showJoinModal}
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="bottom-sheet-overlay" on:click={() => goto('/dashboard')}>
-    <div class="bottom-sheet" on:click|stopPropagation>
-      <div class="bottom-sheet-header">
-        <div class="bottom-sheet-indicator"></div>
-      </div>
-      <div class="bottom-sheet-content">
-        <h2>모임 참여</h2>
-        <p>이 모임에 참여하시겠습니까?</p>
-        <div class="bottom-sheet-buttons">
-          <button class="primary-btn" on:click={joinMoim}>참여하기</button>
-          <button class="secondary-btn" on:click={() => goto('/dashboard')}>돌아가기</button>
-        </div>
-      </div>
+<BottomSheet show={showJoinModal} onClose={() => goto('/dashboard')} title="모임 참여">
+  <div class="join-sheet-content">
+    <p class="join-description">이 모임에 참여하시겠습니까?</p>
+    <div class="join-description-sub">모임에 참여하면 일정 조율에 참여할 수 있습니다.</div>
+    <div class="form-actions">
+      <Button
+        variant="outline"
+        on:click={() => goto('/dashboard')}
+        flex={1}
+      >돌아가기</Button>
+      <Button
+        variant="primary"
+        on:click={joinMoim}
+        flex={2}
+      >참여하기</Button>
     </div>
   </div>
-{/if}
+</BottomSheet>
 
 <style>
   :global(body) {
@@ -339,21 +341,6 @@
     align-items: center;
     justify-content: center;
     z-index: 1000;
-  }
-
-  .spinner {
-    width: 60px;
-    height: 60px;
-    border: 6px solid rgba(0, 0, 0, 0.1);
-    border-top-color: #064b45;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
   }
 
   .moim-container {
@@ -565,95 +552,22 @@
     padding: 1rem;
   }
 
-  /* 바텀 시트 스타일 */
-  .bottom-sheet-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    z-index: 2000;
-    animation: fadeIn 0.2s ease-out;
-  }
-
-  .bottom-sheet {
-    background: white;
-    width: 100%;
-    max-width: 500px;
-    border-radius: 20px 20px 0 0;
-    animation: slideUp 0.3s ease-out;
-    transform-origin: bottom;
-    margin-bottom: env(safe-area-inset-bottom);
-  }
-
-  .bottom-sheet-header {
-    display: flex;
-    justify-content: center;
-    padding: 0.5rem;
-  }
-
-  .bottom-sheet-content {
-    padding: 1.25rem;
-  }
-
-  .bottom-sheet-content h2 {
-    font-size: 1.25rem;
+  .join-description {
+    font-size: 1.125rem;
     font-weight: 600;
-    margin-bottom: 0.75rem;
     color: #1F2937;
   }
 
-  .bottom-sheet-content p {
-    color: #4B5563;
-    margin-bottom: 1.5rem;
+  .join-description-sub {
+    font-size: 0.875rem;
+    color: #6B7280;
+    margin-bottom: 2rem;
   }
 
-  .bottom-sheet-buttons {
+  .form-actions {
     display: flex;
     gap: 0.75rem;
+    margin-top: 1.5rem;
   }
-
-  .bottom-sheet-buttons button {
-    flex: 1;
-    padding: 0.875rem;
-    border: none;
-    border-radius: 12px;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .primary-btn {
-    background-color: #064b45;
-    color: white;
-  }
-
-  .primary-btn:hover {
-    background-color: #043835;
-  }
-
-  .secondary-btn {
-    background-color: #F3F4F6;
-    color: #374151;
-  }
-
-  .secondary-btn:hover {
-    background-color: #E5E7EB;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-
-  @keyframes slideUp {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
-  }
+  
 </style>

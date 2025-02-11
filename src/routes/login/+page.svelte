@@ -3,6 +3,10 @@
     import { goto } from '$app/navigation';
     import { fade, fly } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
+    import type { SocialLoadingState } from '$lib/types';
+    import Logo from '$lib/components/Logo.svelte';
+    import Spinner from '$lib/components/Spinner.svelte';
+    import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 
     let loading = false;
     let email = '';
@@ -18,7 +22,7 @@
         isEmailValid = !email || emailRegex.test(email);
         isPasswordValid = !password || password.length >= 6;
     }
-    let socialLoading = {
+    let socialLoading: SocialLoadingState = {
         google: false,
         kakao: false,
         apple: false
@@ -121,13 +125,7 @@
     <div class="moim-content-wrapper">
         <header class="moim-header">
             <div class="brand-section">
-                <div class="logo-container">
-                    <svg class="logo" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="24" cy="24" r="20" fill="#064B45"/>
-                        <path d="M24 12V24L32 28" stroke="white" stroke-width="3" stroke-linecap="round"/>
-                    </svg>
-                    <h1 class="logo-text font-extrabold">언제모여</h1>
-                </div>
+                <Logo />
                 <p class="intro-text">모임 일정 조율을 쉽고 편하게</p>
                 <div class="features">
                     <span>반복 모임 최적화</span>
@@ -161,18 +159,11 @@
                 form="login-form"
             />
             {#if errorMessage}
-                <div class="error">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    {errorMessage}
-                </div>
+                <ErrorMessage message={errorMessage} />
             {/if}
             <button type="submit" disabled={loading} class="submit-btn font-bold">
                 {#if loading}
-                    <div class="spinner"></div>
+                    <Spinner size="small" />
                     <span>로그인 중</span>
                 {:else}
                     <span>로그인</span>
@@ -256,23 +247,6 @@
         flex-direction: column;
         align-items: center;
         gap: 1rem;
-    }
-
-    .logo-container {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .logo {
-        width: 28px;
-        height: 28px;
-    }
-
-    .logo-text {
-        font-size: 1.5rem;
-        color: #064B45;
-        margin: 0;
     }
 
     .intro-text {
@@ -478,15 +452,5 @@
     .apple-btn img {
         filter: invert(1) brightness(100%);
     }
-
-    .error {
-        color: #e53e3e;
-        font-size: 0.85rem;
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-
+    
 </style>
