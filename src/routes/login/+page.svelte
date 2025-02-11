@@ -119,7 +119,7 @@
 
 <main>
     <div class="login-container">
-        <h1>로그인</h1>
+        <h1 class="font-extrabold">로그인</h1>
         <form on:submit|preventDefault={handleLogin} id="login-form">
             <input 
                 type="email" 
@@ -150,7 +150,7 @@
                     {errorMessage}
                 </div>
             {/if}
-            <button type="submit" disabled={loading} class="submit-btn">
+            <button type="submit" disabled={loading} class="submit-btn font-bold">
                 {#if loading}
                     <div class="spinner"></div>
                     <span>로그인 중</span>
@@ -158,13 +158,13 @@
                     <span>로그인</span>
                 {/if}
             </button>
-            <div class="signup-link">
+            <div class="signup-link font-light">
                 계정이 없으신가요? <a href="/signup">회원가입하기</a>
             </div>
-            <div class="divider">
+            <div class="divider font-light">
                 <span>또는 아래로 계속하기</span>
             </div>
-            <button type="button" class="social-btn google-btn" on:click={loginWithGoogle} disabled={socialLoading.google}>
+            <button type="button" class="social-btn google-btn font-regular" on:click={loginWithGoogle} disabled={socialLoading.google}>
                 {#if socialLoading.google}
                     <div class="spinner social-spinner"></div>
                     <span>연결 중</span>
@@ -173,7 +173,7 @@
                     <span>Google로 계속하기</span>
                 {/if}
             </button>
-            <button type="button" class="social-btn kakao-btn" on:click={loginWithKakao} disabled={socialLoading.kakao}>
+            <button type="button" class="social-btn kakao-btn font-regular" on:click={loginWithKakao} disabled={socialLoading.kakao}>
                 {#if socialLoading.kakao}
                     <div class="spinner social-spinner"></div>
                     <span>연결 중</span>
@@ -182,7 +182,7 @@
                     <span>카카오로 계속하기</span>
                 {/if}
             </button>
-            <button type="button" class="social-btn apple-btn" on:click={loginWithApple} disabled={socialLoading.apple}>
+            <button type="button" class="social-btn apple-btn font-regular" on:click={loginWithApple} disabled={socialLoading.apple}>
                 {#if socialLoading.apple}
                     <div class="spinner social-spinner"></div>
                     <span>연결 중</span>
@@ -198,7 +198,6 @@
 <style>
     :global(body) {
         margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         background: white;
     }
 
