@@ -36,6 +36,7 @@
 	},
 	"dependencies": {
 		"@supabase/supabase-js": "^2.48.1",
+		"date-fns": "^4.1.0",
 		"nanoid": "^5.0.9"
 	}
 }

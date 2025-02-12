@@ -21,13 +21,14 @@
 		apple: false
 	};
 
-	// 페이지 로드시 로그인 여부 확인: 로그인 상태라면 바로 모임 상세 페이지로 리다이렉트
+	// 페이지 로드시 로그인 여부 확인: 로그인 상태라면 바로 모임에 참여
 	onMount(async () => {
 		try {
 			const {
 				data: { session }
 			} = await supabase.auth.getSession();
 			if (session) {
+				await joinMoimByInviteCode(inviteCode);
 				goto(`/moim/${inviteCode}`);
 			}
 		} catch (err: any) {
@@ -41,9 +42,14 @@
 	async function loginWithKakao() {
 		try {
 			socialLoading.kakao = true;
+			// 절대 URL 사용
+			const redirectUrl = `${window.location.origin}/moim/${inviteCode}`;
 			const { error } = await supabase.auth.signInWithOAuth({
 				provider: 'kakao',
-				options: { redirectTo: `/moim/${inviteCode}` }
+				options: { 
+					redirectTo: redirectUrl,
+					skipBrowserRedirect: false
+				}
 			});
 			if (error) {
 				errorMessage = error.message;
@@ -58,9 +64,14 @@
 	async function loginWithGoogle() {
 		try {
 			socialLoading.google = true;
+			// 절대 URL 사용
+			const redirectUrl = `${window.location.origin}/moim/${inviteCode}`;
 			const { error } = await supabase.auth.signInWithOAuth({
 				provider: 'google',
-				options: { redirectTo: `/moim/${inviteCode}` }
+				options: { 
+					redirectTo: redirectUrl,
+					skipBrowserRedirect: false
+				}
 			});
 			if (error) {
 				errorMessage = error.message;
@@ -75,9 +86,14 @@
 	async function loginWithApple() {
 		try {
 			socialLoading.apple = true;
+			// 절대 URL 사용
+			const redirectUrl = `${window.location.origin}/moim/${inviteCode}`;
 			const { error } = await supabase.auth.signInWithOAuth({
 				provider: 'apple',
-				options: { redirectTo: `/moim/${inviteCode}` }
+				options: { 
+					redirectTo: redirectUrl,
+					skipBrowserRedirect: false
+				}
 			});
 			if (error) {
 				errorMessage = error.message;
@@ -89,10 +105,18 @@
 		}
 	}
 
-	// onAuthStateChange를 구독하여 로그인 후 자동 리다이렉트
-	supabase.auth.onAuthStateChange((event, session) => {
+	import { joinMoimByInviteCode } from '$lib/stores/moim';
+
+	// onAuthStateChange를 구독하여 로그인 후 자동으로 모임에 참여
+	supabase.auth.onAuthStateChange(async (event, session) => {
 		if (session) {
-			goto(`/moim/${inviteCode}`);
+			try {
+				await joinMoimByInviteCode(inviteCode);
+				goto(`/moim/${inviteCode}`);
+			} catch (error) {
+				console.error('Failed to join moim:', error);
+				errorMessage = error instanceof Error ? error.message : '모임 참여에 실패했습니다.';
+			}
 		}
 	});
 </script>

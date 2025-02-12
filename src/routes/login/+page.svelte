@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { supabase } from '$lib/supabaseClient';
     import { goto } from '$app/navigation';
     import { fade, fly } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
@@ -7,11 +6,10 @@
     import Logo from '$lib/components/Logo.svelte';
     import Spinner from '$lib/components/Spinner.svelte';
     import ErrorMessage from '$lib/components/ErrorMessage.svelte';
+    import { loginWithPassword, loginWithSocial, isLoading, authError } from '$lib/stores/auth';
 
-    let loading = false;
     let email = '';
     let password = '';
-    let errorMessage = '';
     let isEmailFocused = false;
     let isPasswordFocused = false;
     let isEmailValid = true;
@@ -22,6 +20,7 @@
         isEmailValid = !email || emailRegex.test(email);
         isPasswordValid = !password || password.length >= 6;
     }
+
     let socialLoading: SocialLoadingState = {
         google: false,
         kakao: false,
@@ -29,94 +28,25 @@
     };
 
     async function handleLogin() {
+        if (!isEmailValid || !isPasswordValid) return;
+
         try {
-            loading = true;
-            errorMessage = '';
-
-            // 이메일 형식 검사
-            const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
-            if (!emailRegex.test(email)) {
-                errorMessage = '유효한 이메일 주소를 입력해주세요.';
-                loading = false;
-                return;
-            }
-
-            // 로그인 시도
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email: email.toLowerCase().trim(), // 이메일 정규화
-                password
-            });
-
-            if (error) {
-                if (error.message === 'Invalid login credentials') {
-                    errorMessage = '이메일 또는 비밀번호가 일치하지 않습니다.';
-                } else {
-                    errorMessage = error.message;
-                }
-                return;
-            }
-
-            if (data?.user) {
-                goto('/dashboard');
-            }
-        } catch (error: any) {
-            errorMessage = '로그인 중 오류가 발생했습니다.';
-            console.error('Login error:', error);
-        } finally {
-            loading = false;
+            await loginWithPassword(email.toLowerCase().trim(), password);
+            goto('/dashboard');
+        } catch (error) {
+            // 에러는 이미 authError 스토어에 저장됨
         }
     }
 
-    async function loginWithGoogle() {
-        try {
-            socialLoading.google = true;
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: '/auth/callback'
-                }
-            });
-            if (error) {
-                errorMessage = error.message;
-                socialLoading.google = false;
-            }
-        } catch (error: any) {
-            errorMessage = error.message;
-            socialLoading.google = false;
-        }
-    }
+    async function handleSocialLogin(provider: 'google' | 'kakao' | 'apple') {
+        socialLoading[provider] = true;
 
-    async function loginWithKakao() {
         try {
-            socialLoading.kakao = true;
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'kakao',
-                options: { redirectTo: '/auth/callback' }
-            });
-            if (error) {
-                errorMessage = error.message;
-                socialLoading.kakao = false;
-            }
-        } catch (error: any) {
-            errorMessage = error.message;
-            socialLoading.kakao = false;
-        }
-    }
-
-    async function loginWithApple() {
-        try {
-            socialLoading.apple = true;
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'apple',
-                options: { redirectTo: '/auth/callback' }
-            });
-            if (error) {
-                errorMessage = error.message;
-                socialLoading.apple = false;
-            }
-        } catch (error: any) {
-            errorMessage = error.message;
-            socialLoading.apple = false;
+            await loginWithSocial(provider);
+            // OAuth 리다이렉션으로 인해 여기까지 오지 않을 수 있음
+        } catch (error) {
+            // 에러는 이미 authError 스토어에 저장됨
+            socialLoading[provider] = false;
         }
     }
 </script>
@@ -158,11 +88,11 @@
                 minlength="6"
                 form="login-form"
             />
-            {#if errorMessage}
-                <ErrorMessage message={errorMessage} />
+            {#if $authError}
+                <ErrorMessage message={$authError} />
             {/if}
-            <button type="submit" disabled={loading} class="submit-btn font-bold">
-                {#if loading}
+            <button type="submit" disabled={$isLoading} class="submit-btn font-bold">
+                {#if $isLoading}
                     <Spinner size="small" />
                     <span>로그인 중</span>
                 {:else}
@@ -175,7 +105,7 @@
             <div class="divider font-light">
                 <span>또는 아래로 계속하기</span>
             </div>
-            <button type="button" class="social-btn kakao-btn font-regular" on:click={loginWithKakao} disabled={socialLoading.kakao}>
+            <button type="button" class="social-btn kakao-btn font-regular" on:click={() => handleSocialLogin('kakao')} disabled={socialLoading.kakao}>
                 {#if socialLoading.kakao}
                     <div class="spinner social-spinner"></div>
                     <span>연결 중</span>
@@ -184,7 +114,7 @@
                     <span>카카오로 계속하기</span>
                 {/if}
             </button>
-            <button type="button" class="social-btn google-btn font-regular" on:click={loginWithGoogle} disabled={socialLoading.google}>
+            <button type="button" class="social-btn google-btn font-regular" on:click={() => handleSocialLogin('google')} disabled={socialLoading.google}>
                 {#if socialLoading.google}
                     <div class="spinner social-spinner"></div>
                     <span>연결 중</span>
@@ -193,7 +123,7 @@
                     <span>Google로 계속하기</span>
                 {/if}
             </button>
-            <button type="button" class="social-btn apple-btn font-regular" on:click={loginWithApple} disabled={socialLoading.apple}>
+            <button type="button" class="social-btn apple-btn font-regular" on:click={() => handleSocialLogin('apple')} disabled={socialLoading.apple}>
                 {#if socialLoading.apple}
                     <div class="spinner social-spinner"></div>
                     <span>연결 중</span>

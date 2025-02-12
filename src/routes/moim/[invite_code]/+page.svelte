@@ -27,6 +27,11 @@
   // 구독 채널 참조 변수 (전역 변수로 선언)
   let subscription: any;
 
+  // 이전 페이지가 초대 페이지인지 확인하는 함수
+  function isComingFromInvite() {
+    return document.referrer.includes(`/moim/${inviteCode}/invite`);
+  }
+
   // 페이지 초기화 함수
   onMount(() => {
     const initializePage = async () => {
@@ -39,6 +44,9 @@
           return;
         }
         currentUser = sessionData.session.user;
+
+        // 초대 페이지에서 왔다면 자동으로 참여
+        const fromInvite = isComingFromInvite();
 
         // 2) 모임 정보 조회 (invite_code로 조회) - maybeSingle() 사용
         const { data: moimData, error: moimError } = await supabase
@@ -68,9 +76,15 @@
         // 만약 데이터가 없다면 빈 배열로 처리
         let updatedPartsData = partsData || [];
         const participantUserIds = updatedPartsData.map((p: any) => p.user_id);
-        // 만약 현재 사용자가 참여자 목록에 없다면, 팝업을 띄워 참여 여부를 묻습니다.
+        // 만약 현재 사용자가 참여자 목록에 없다면
         if (!participantUserIds.includes(currentUser.id)) {
-          showJoinModal = true;
+          if (fromInvite) {
+            // 초대 페이지에서 왔다면 자동으로 참여
+            await joinMoim();
+          } else {
+            // 그렇지 않다면 모달 표시
+            showJoinModal = true;
+          }
         }
 
         // 참여자들의 프로필 정보 조회
