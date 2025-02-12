@@ -37,6 +37,10 @@ export const loginWithSocial = async (provider: 'google' | 'kakao' | 'apple') =>
   try {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
+      options: {
+        redirectTo: window.location.origin + '/dashboard',
+        skipBrowserRedirect: false
+      }
     });
     if (error) throw error;
   } catch (err) {
