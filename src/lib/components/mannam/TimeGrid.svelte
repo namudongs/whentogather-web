@@ -48,9 +48,10 @@
 
   // 히트맵 색상 계산
   function getHeatmapColor(count: number, max: number): string {
-    if (count === 0) return 'bg-gray-100';
-    const intensity = Math.min((count / max) * 100, 100);
-    return `bg-blue-${Math.ceil(intensity / 10) * 100}`;
+    if (count === 0) return 'bg-gray-50';
+    const intensity = Math.min((count / max), 1);
+    // 키컬러: #4F46E5 (인디고-600)
+    return `rgba(79, 70, 229, ${intensity * 0.7})`; // 0.7을 곱해서 채도를 낮춤
   }
 
   // 마우스 드래그 관련 상태
@@ -137,8 +138,13 @@
 <style>
   .time-grid-container {
     width: 100%;
-    overflow-x: auto;
+    max-width: 500px;
+    margin: 0 auto;
+    overflow-x: hidden;
     user-select: none;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
   }
 
   .time-grid-header {
@@ -151,7 +157,7 @@
   }
 
   .time-label-column {
-    width: 4rem;
+    width: 3rem;
     flex-shrink: 0;
     position: sticky;
     left: 0;
@@ -161,8 +167,7 @@
 
   .date-header {
     flex: 1;
-    min-width: 100px;
-    padding: 0.5rem;
+    padding: 0.5rem 0.25rem;
     text-align: center;
     border-left: 1px solid #e5e7eb;
   }
@@ -180,6 +185,7 @@
   .time-grid {
     display: flex;
     position: relative;
+    width: 100%;
   }
 
   .time-label {
@@ -194,7 +200,6 @@
 
   .date-column {
     flex: 1;
-    min-width: 100px;
     border-left: 1px solid #e5e7eb;
   }
 
@@ -210,18 +215,13 @@
   }
 
   .time-slot.selected {
-    background-color: #3b82f6;
+    background-color: #4F46E5;
+    opacity: 0.9;
   }
 
-  /* 히트맵 색상 */
-  .bg-gray-100 { background-color: #f3f4f6; }
-  .bg-blue-100 { background-color: #dbeafe; }
-  .bg-blue-200 { background-color: #bfdbfe; }
-  .bg-blue-300 { background-color: #93c5fd; }
-  .bg-blue-400 { background-color: #60a5fa; }
-  .bg-blue-500 { background-color: #3b82f6; }
-  .bg-blue-600 { background-color: #2563eb; }
-  .bg-blue-700 { background-color: #1d4ed8; }
-  .bg-blue-800 { background-color: #1e40af; }
-  .bg-blue-900 { background-color: #1e3a8a; }
+  .time-slot:hover:not(.selected) {
+    background-color: #EEF2FF;
+  }
+
+
 </style>

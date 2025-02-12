@@ -334,26 +334,27 @@
 {/if}
 
 <style>
+	:global(body) {
+		background-color: white;
+	}
+
 	.moim-container {
 		margin: 0 auto;
 		width: 100%;
-		max-width: 896px;
+		max-width: 500px;
+		padding: 1.5rem 1rem;
 		padding: 1.5rem 1rem;
 	}
 
 	.moim-content-wrapper {
 		overflow: hidden;
-		border-radius: 0.5rem;
-		background-color: white;
-		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 	}
 
 	.moim-header {
 		display: flex;
 		align-items: center;
 		gap: 1rem;
-		border-bottom: 1px solid #e5e7eb;
-		padding: 1rem;
+		margin-bottom: 1.5rem;
 	}
 
 	.back-btn {
@@ -426,9 +427,8 @@
 	}
 
 	.response-item {
-		border-radius: 0.5rem;
-		border: 1px solid #e5e7eb;
-		padding: 1rem;
+		padding: 1rem 0;
+		border-bottom: 1px solid #e5e7eb;
 	}
 
 	.response-user {
@@ -478,10 +478,9 @@
 	}
 
 	:global(.time-grid) {
-		border-radius: 0.5rem;
-		border: 1px solid #e5e7eb;
 		background-color: white;
-		min-width: 600px;
+		min-width: 500px;
+		max-width: 500px;
 	}
 
 	:global(.time-grid-cell) {
