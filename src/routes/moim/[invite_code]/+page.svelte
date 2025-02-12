@@ -29,7 +29,11 @@
   let mannamDescription = '';
   let mannamStartDate = '';
   let mannamEndDate = '';
-  let mannamDuration = 1;
+  let mannamTimeRange = {
+    start: '09:00',
+    end: '21:00'
+  };
+  let mannamTimeSlotMinutes = 30;
   let mannamError = '';
 
   // 구독 채널 참조 변수 (전역 변수로 선언)
@@ -193,7 +197,8 @@
           description: mannamDescription,
           start_date: mannamStartDate,
           end_date: mannamEndDate,
-          duration: mannamDuration,
+          time_range: mannamTimeRange,
+          time_slot_minutes: mannamTimeSlotMinutes,
           status: 'pending'
         })
         .select()
@@ -209,7 +214,11 @@
       mannamDescription = '';
       mannamStartDate = '';
       mannamEndDate = '';
-      mannamDuration = 1;
+      mannamTimeRange = {
+        start: '09:00',
+        end: '21:00'
+      };
+      mannamTimeSlotMinutes = 30;
       
       // 시트 닫기
       showCreateMannamSheet = false;
@@ -473,15 +482,44 @@
       </div>
 
       <div class="form-group">
-        <label for="mannamDuration" class="form-label">소요 시간 (시간)</label>
-        <input
-          type="number"
-          id="mannamDuration"
-          bind:value={mannamDuration}
-          min="1"
-          required
+        <!-- svelte-ignore a11y_label_has_associated_control -->
+        <label class="form-label">시간 범위</label>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="mannamTimeRangeStart" class="form-sublabel">시작 시간</label>
+            <input
+              type="time"
+              id="mannamTimeRangeStart"
+              bind:value={mannamTimeRange.start}
+              required
+              class="form-input"
+            />
+          </div>
+
+          <div class="form-group flex-1">
+            <label for="mannamTimeRangeEnd" class="form-sublabel">종료 시간</label>
+            <input
+              type="time"
+              id="mannamTimeRangeEnd"
+              bind:value={mannamTimeRange.end}
+              required
+              class="form-input"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="mannamTimeSlotMinutes" class="form-label">시간 슬롯 단위 (분)</label>
+        <select
+          id="mannamTimeSlotMinutes"
+          bind:value={mannamTimeSlotMinutes}
           class="form-input"
-        />
+        >
+          <option value={15}>15분</option>
+          <option value={30}>30분</option>
+          <option value={60}>1시간</option>
+        </select>
       </div>
 
       <div class="form-actions">
