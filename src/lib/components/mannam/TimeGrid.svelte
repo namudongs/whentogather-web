@@ -48,10 +48,11 @@
 
   // 히트맵 색상 계산
   function getHeatmapColor(count: number, max: number): string {
-    if (count === 0) return 'bg-gray-50';
+    if (count === 0) return 'transparent';
+    // 키컬러: #064B45 (진한 청록색)
     const intensity = Math.min((count / max), 1);
-    // 키컬러: #4F46E5 (인디고-600)
-    return `rgba(79, 70, 229, ${intensity * 0.7})`; // 0.7을 곱해서 채도를 낮춤
+    // RGB 값: 6, 75, 69
+    return `rgba(6, 75, 69, ${intensity * 0.35})`; // 0.35를 곱해서 50% 더 연하게 설정
   }
 
   // 마우스 드래그 관련 상태
@@ -94,6 +95,7 @@
   }
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="time-grid-container" on:mouseup={handleMouseUp} on:mouseleave={handleMouseUp}>
   <!-- 날짜 헤더 -->
   <div class="time-grid-header">
@@ -124,8 +126,8 @@
           {@const dateStr = format(date, 'yyyy-MM-dd')}
           {@const slotKey = getSlotKey(dateStr, slotIndex)}
           <div
-            class="time-slot {isSlotSelected(dateStr, slotIndex) ? 'selected' : ''} 
-                           {readOnly ? getHeatmapColor(heatmapData[slotKey] || 0, Math.max(...Object.values(heatmapData))) : ''}"
+            class="time-slot {isSlotSelected(dateStr, slotIndex) ? 'selected' : ''}"
+            style="{readOnly ? `background-color: ${getHeatmapColor(heatmapData[slotKey] || 0, Math.max(...Object.values(heatmapData), 1))}` : ''}"
             on:mousedown={() => handleMouseDown(dateStr, slotIndex)}
             on:mouseenter={() => handleMouseEnter(dateStr, slotIndex)}
           ></div>
@@ -215,12 +217,12 @@
   }
 
   .time-slot.selected {
-    background-color: #4F46E5;
+    background-color: #064B45;
     opacity: 0.9;
   }
 
   .time-slot:hover:not(.selected) {
-    background-color: #EEF2FF;
+    background-color: rgba(6, 75, 69, 0.1);
   }
 
 

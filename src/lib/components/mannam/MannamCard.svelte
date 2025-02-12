@@ -1,7 +1,7 @@
 <!-- MannamCard.svelte -->
 <script lang="ts">
   import { format } from 'date-fns';
-  import ko from 'date-fns/locale/ko';
+  import { ko } from 'date-fns/locale/ko';
 
   export let mannam: {
     id: string;
