@@ -8,21 +8,29 @@
   import ErrorMessage from '$lib/components/ErrorMessage.svelte';
   import BottomSheet from '$lib/components/BottomSheet.svelte';
   import Button from '$lib/components/Button.svelte';
+  import { user } from '$lib/stores/auth';
 
   let moim: any = null;
   let participants: any[] = [];
   let mannams: any[] = [];
   let errorMessage = '';
   let loading = true;
-  // 현재 로그인 사용자 정보를 저장할 변수
-  let currentUser: any = null;
 
-  // URL 파라미터에서 초대 코드를 추출 (파일 이름은 [invite_code].svelte)
+  // URL 파라미터에서 초대 코드를 추출
   let inviteCode = '';
   $: inviteCode = $page.params.invite_code;
 
-  // 팝업 모달 표시 여부 (참여하지 않은 경우 true)
+  // 모달 상태
   let showJoinModal = false;
+  let showCreateMannamSheet = false;
+
+  // 만남 생성 폼 데이터
+  let mannamTitle = '';
+  let mannamDescription = '';
+  let mannamStartDate = '';
+  let mannamEndDate = '';
+  let mannamDuration = 1;
+  let mannamError = '';
 
   // 구독 채널 참조 변수 (전역 변수로 선언)
   let subscription: any;
@@ -43,7 +51,7 @@
           await goto(`/moim/${inviteCode}/invite`);
           return;
         }
-        currentUser = sessionData.session.user;
+        $user = sessionData.session.user;
 
         // 초대 페이지에서 왔다면 자동으로 참여
         const fromInvite = isComingFromInvite();
@@ -77,7 +85,7 @@
         let updatedPartsData = partsData || [];
         const participantUserIds = updatedPartsData.map((p: any) => p.user_id);
         // 만약 현재 사용자가 참여자 목록에 없다면
-        if (!participantUserIds.includes(currentUser.id)) {
+        if (!participantUserIds.includes($user.id)) {
           if (fromInvite) {
             // 초대 페이지에서 왔다면 자동으로 참여
             await joinMoim();
@@ -166,18 +174,62 @@
     goto('/dashboard');
   }
 
-  // "만남 추가" 버튼 핸들러
-  function createMannam() {
-    goto(`/moim/${inviteCode}/mannam/new`);
+  // 만남 생성 시트 열기
+  function openCreateMannamSheet() {
+    showCreateMannamSheet = true;
+  }
+
+  // 만남 생성 처리
+  async function handleCreateMannam() {
+    if (!moim || !$user) return;
+    
+    try {
+      const { data: mannam, error: err } = await supabase
+        .from('mannams')
+        .insert({
+          moim_id: moim.id,
+          creator_id: $user.id,
+          title: mannamTitle,
+          description: mannamDescription,
+          start_date: mannamStartDate,
+          end_date: mannamEndDate,
+          duration: mannamDuration,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (err) throw err;
+
+      // 만남 목록 새로고침
+      mannams = [...mannams, mannam];
+      
+      // 입력 폼 초기화
+      mannamTitle = '';
+      mannamDescription = '';
+      mannamStartDate = '';
+      mannamEndDate = '';
+      mannamDuration = 1;
+      
+      // 시트 닫기
+      showCreateMannamSheet = false;
+    } catch (err) {
+      mannamError = err instanceof Error ? err.message : '만남을 생성하는 중에 오류가 발생했습니다.';
+    }
   }
 
   // 모임 참여 (팝업 "네" 버튼 클릭 시)
   async function joinMoim() {
+    if (!$user) {
+      errorMessage = '로그인이 필요합니다.';
+      return;
+    }
+
     try {
       // 참여자 추가 처리
       const { data: insertedParticipants, error: insertError } = await supabase
         .from('moim_participants')
-        .insert({ moim_id: moim.id, user_id: currentUser.id, role: 'participant' })
+        .insert({ moim_id: moim.id, user_id: $user.id, role: 'participant' })
         .select();
       if (insertError) {
         errorMessage = `참여자를 추가하는 중에 에러가 발생했습니다: ${insertError?.message || '알 수 없는 오류'}`;
@@ -257,11 +309,13 @@
         <section class="mannams-box info-box">
           <div class="mannams-header">
             <h2 class="section-title">만남 목록</h2>
-            <button class="add-mannam-btn" on:click={createMannam} aria-label="만남 추가">
+            <button
+              on:click={openCreateMannamSheet}
+              class="add-mannam-btn"
+            >
               <svg
+                class="w-4 h-4"
                 xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -269,8 +323,8 @@
                 stroke-linecap="round"
                 stroke-linejoin="round"
               >
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
               만남 추가하기
             </button>
@@ -278,12 +332,29 @@
           {#if mannams.length > 0}
             <div class="mannams-list">
               {#each mannams as mannam}
-                <div class="mannam-cell">
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <div 
+                  class="mannam-cell" 
+                  on:click={() => goto(`/moim/${inviteCode}/mannams/${mannam.id}`)}
+                  role="button"
+                  tabindex="0"
+                >
                   <h3 class="mannam-title">{mannam.title}</h3>
                   {#if mannam.description}
                     <p class="mannam-description">{mannam.description}</p>
                   {/if}
-                  <p class="meta">생성일: {new Date(mannam.created_at).toLocaleDateString()}</p>
+                  <div class="mannam-meta">
+                    <p class="meta">생성일: {new Date(mannam.created_at).toLocaleDateString()}</p>
+                    <p class="meta status {mannam.status}">
+                      {#if mannam.status === 'pending'}
+                        대기중
+                      {:else if mannam.status === 'confirmed'}
+                        확정됨
+                      {:else}
+                        취소됨
+                      {/if}
+                    </p>
+                  </div>
                 </div>
               {/each}
             </div>
@@ -333,6 +404,102 @@
         flex={2}
       >참여하기</Button>
     </div>
+  </div>
+</BottomSheet>
+
+<!-- 만남 생성 바텀시트 -->
+<BottomSheet
+  show={showCreateMannamSheet}
+  onClose={() => {
+    showCreateMannamSheet = false;
+    mannamError = '';
+  }}
+  title="새로운 만남 만들기"
+  blurBackground={false}
+>
+  <div class="create-mannam-content">
+    {#if mannamError}
+      <div class="error-message">
+        {mannamError}
+      </div>
+    {/if}
+
+    <form on:submit|preventDefault={handleCreateMannam} class="create-mannam-form">
+      <div class="form-group">
+        <label for="mannamTitle" class="form-label">만남 제목</label>
+        <input
+          type="text"
+          id="mannamTitle"
+          bind:value={mannamTitle}
+          required
+          class="form-input"
+          placeholder="3월 정기 모임"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="mannamDescription" class="form-label">설명</label>
+        <textarea
+          id="mannamDescription"
+          bind:value={mannamDescription}
+          rows="3"
+          class="form-input"
+          placeholder="이번 모임의 주제나 준비물 등을 적어주세요"
+        ></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label for="mannamStartDate" class="form-label">시작 날짜</label>
+          <input
+            type="date"
+            id="mannamStartDate"
+            bind:value={mannamStartDate}
+            required
+            class="form-input"
+          />
+        </div>
+
+        <div class="form-group flex-1">
+          <label for="mannamEndDate" class="form-label">종료 날짜</label>
+          <input
+            type="date"
+            id="mannamEndDate"
+            bind:value={mannamEndDate}
+            required
+            class="form-input"
+          />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="mannamDuration" class="form-label">소요 시간 (시간)</label>
+        <input
+          type="number"
+          id="mannamDuration"
+          bind:value={mannamDuration}
+          min="1"
+          required
+          class="form-input"
+        />
+      </div>
+
+      <div class="form-actions">
+        <Button
+          variant="outline"
+          on:click={() => {
+            showCreateMannamSheet = false;
+            mannamError = '';
+          }}
+          flex={1}
+        >취소</Button>
+        <Button
+          variant="primary"
+          type="submit"
+          flex={2}
+        >만남 생성하기</Button>
+      </div>
+    </form>
   </div>
 </BottomSheet>
 
@@ -492,16 +659,130 @@
     gap: 12px;
   }
 
-  .mannam-cell {
-    background: #fafafa;
+  .add-mannam-btn {
+    display: flex;
+    gap: 0.2rem;
+    background-color: #064b45;
+    color: white;
+    border: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    align-items: center;
+    font-size: 0.8rem;
+    margin-top: -0.5rem;
+  }
+
+  .add-mannam-btn:hover {
+    background-color: #043835;
+  }
+
+  /* 만남 생성 폼 스타일 */
+  .create-mannam-content {
     padding: 1rem;
-    border-radius: 6px;
+  }
+
+  .create-mannam-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .flex-1 {
+    flex: 1;
+  }
+
+  .form-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #D1D5DB;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    transition: border-color 0.2s;
+  }
+
+  .form-input:focus {
+    outline: none;
+    border-color: #064b45;
+    box-shadow: 0 0 0 1px #064b45;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .error-message {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    background-color: #FEE2E2;
+    border: 1px solid #F87171;
+    border-radius: 0.375rem;
+    color: #991B1B;
+    font-size: 0.875rem;
+  }
+
+  .mannam-cell {
+    background: white;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1rem;
+    cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
   }
 
   .mannam-cell:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .mannam-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+  }
+
+  .status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .status.pending {
+    background-color: #FEF3C7;
+    color: #92400E;
+  }
+
+  .status.confirmed {
+    background-color: #D1FAE5;
+    color: #065F46;
+  }
+
+  .status.cancelled {
+    background-color: #FEE2E2;
+    color: #991B1B;
   }
 
   .mannam-title {

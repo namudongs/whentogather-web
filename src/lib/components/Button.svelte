@@ -11,7 +11,7 @@
 <button
   {type}
   {disabled}
-  class="button {variant}"
+  class="button {variant} {$$props.class}"
   style={flex ? `flex: ${flex}` : ''}
   on:click
 >
