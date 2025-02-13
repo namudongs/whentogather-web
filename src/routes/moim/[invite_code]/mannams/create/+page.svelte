@@ -5,6 +5,7 @@
 	import { user } from '$lib/stores/auth';
 	import Button from '$lib/components/Button.svelte';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
+	import DateRangePicker from '$lib/components/DateRangePicker.svelte';
 
 	let moim: any = null;
 	let loading = true;
@@ -18,35 +19,6 @@
 	let mannamTimeRange = { start: '09:00', end: '21:00' };
 	let mannamTimeSlotMinutes = 30;
 	let mannamError = '';
-
-	// 도움말(툴팁) 상태
-	let showStartDateHelp = false;
-	let startDateHelpPosition = { x: 0, y: 0 };
-	let showEndDateHelp = false;
-	let endDateHelpPosition = { x: 0, y: 0 };
-	let showTimeRangeHelp = false;
-	let timeRangeHelpPosition = { x: 0, y: 0 };
-	let showSlotHelp = false;
-	let slotHelpPosition = { x: 0, y: 0 };
-
-	// 날짜 범위 제한 체크
-	$: {
-		if (mannamStartDate && mannamEndDate) {
-			const start = new Date(mannamStartDate);
-			const end = new Date(mannamEndDate);
-			const diffDays = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-
-			if (diffDays > 7) {
-				mannamEndDate = '';
-				mannamError = '날짜 범위는 7일을 초과할 수 없습니다.';
-			} else if (end < start) {
-				mannamEndDate = '';
-				mannamError = '종료 날짜는 시작 날짜보다 이후여야 합니다.';
-			} else {
-				mannamError = '';
-			}
-		}
-	}
 
 	async function loadMoimData() {
 		try {
@@ -80,8 +52,24 @@
 		}
 	}
 
-	async function handleCreateMannam() {
+	async function handleCreateMannam(event: Event) {
+		event.preventDefault();
 		if (!moim || !$user) return;
+
+		// 필수 입력값 검증
+		if (!mannamTitle.trim()) {
+			mannamError = '만남 제목을 입력해주세요.';
+			return;
+		}
+		if (!mannamStartDate || !mannamEndDate) {
+			mannamError = '만남 날짜를 선택해주세요.';
+			return;
+		}
+		if (!mannamTimeRange.start || !mannamTimeRange.end) {
+			mannamError = '만남 시간을 선택해주세요.';
+			return;
+		}
+
 		try {
 			const { data: mannam, error: err } = await supabase
 				.from('mannams')
@@ -132,6 +120,7 @@
 
 	{#if loading}
 		<div class="loading-container">
+			<!-- svelte-ignore element_invalid_self_closing_tag -->
 			<div class="spinner" />
 		</div>
 	{:else if errorMessage}
@@ -168,166 +157,16 @@
 				</div>
 
 				<!-- 시작 날짜 / 종료 날짜 -->
-				<div class="form-row">
-					<div class="form-group flex-1">
-						<div class="label-with-help">
-							<label for="mannamStartDate" class="form-label">시작 날짜</label>
-							<button
-								type="button"
-								class="help-icon"
-								aria-label="시작 날짜에 대한 도움말"
-								on:mouseenter={(e) => {
-									const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-									startDateHelpPosition = { x: rect.left, y: rect.top };
-									showStartDateHelp = true;
-								}}
-								on:mouseleave={() => (showStartDateHelp = false)}
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									width="16"
-									height="16"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								>
-									<circle cx="12" cy="12" r="10"></circle>
-									<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-									<line x1="12" y1="17" x2="12.01" y2="17"></line>
-								</svg>
-							</button>
-							{#if showStartDateHelp}
-								<div
-									class="help-tooltip"
-									style="left: {startDateHelpPosition.x}px; top: {startDateHelpPosition.y + 20}px"
-								>
-									만남 가능 날짜의 시작일입니다. 참여자들은 이 날짜부터 시간을 선택할 수 있습니다.
-								</div>
-							{/if}
-						</div>
-						<input
-							type="date"
-							id="mannamStartDate"
-							bind:value={mannamStartDate}
-							required
-							class="form-input"
-						/>
-					</div>
-
-					<div class="form-group flex-1">
-						<div class="label-with-help">
-							<label for="mannamEndDate" class="form-label">종료 날짜</label>
-							<button
-								type="button"
-								class="help-icon"
-								aria-label="종료 날짜에 대한 도움말"
-								on:mouseenter={(e) => {
-									const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-									endDateHelpPosition = { x: rect.left, y: rect.top };
-									showEndDateHelp = true;
-								}}
-								on:mouseleave={() => (showEndDateHelp = false)}
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									width="16"
-									height="16"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								>
-									<circle cx="12" cy="12" r="10"></circle>
-									<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-									<line x1="12" y1="17" x2="12.01" y2="17"></line>
-								</svg>
-							</button>
-							{#if showEndDateHelp}
-								<div
-									class="help-tooltip"
-									style="left: {endDateHelpPosition.x}px; top: {endDateHelpPosition.y + 20}px"
-								>
-									만남 가능 날짜의 종료일입니다. 참여자들은 이 날짜까지만 시간을 선택할 수 있습니다.
-								</div>
-							{/if}
-						</div>
-						<input
-							type="date"
-							id="mannamEndDate"
-							bind:value={mannamEndDate}
-							required
-							class="form-input"
-						/>
-					</div>
-				</div>
-
-				<!-- 날짜 선택 안내 메시지 -->
-				<div class="date-range-info">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="16"
-						height="16"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						class="info-icon"
-					>
-						<circle cx="12" cy="12" r="10"></circle>
-						<line x1="12" y1="16" x2="12" y2="12"></line>
-						<line x1="12" y1="8" x2="12.01" y2="8"></line>
-					</svg>
-					<span>날짜 범위는 최대 7일까지 선택할 수 있습니다.</span>
-				</div>
+				<DateRangePicker
+					bind:startDate={mannamStartDate}
+					bind:endDate={mannamEndDate}
+					maxRange={7}
+				/>
 
 				<!-- 시간 범위 -->
 				<div class="form-group">
-					<div class="label-with-help">
-						<label class="form-label">시간 범위</label>
-						<button
-							type="button"
-							class="help-icon"
-							aria-label="시간 범위에 대한 도움말"
-							on:mouseenter={(e) => {
-								const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-								timeRangeHelpPosition = { x: rect.left, y: rect.top };
-								showTimeRangeHelp = true;
-							}}
-							on:mouseleave={() => (showTimeRangeHelp = false)}
-						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								width="16"
-								height="16"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							>
-								<circle cx="12" cy="12" r="10"></circle>
-								<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-								<line x1="12" y1="17" x2="12.01" y2="17"></line>
-							</svg>
-						</button>
-						{#if showTimeRangeHelp}
-							<div
-								class="help-tooltip"
-								style="left: {timeRangeHelpPosition.x}px; top: {timeRangeHelpPosition.y + 20}px"
-							>
-								하루 중 만남이 가능한 시간대를 설정합니다. 예를 들어, 오전 9시부터 오후 6시까지로 설정하면
-								해당 시간대 내에서만 선택이 가능합니다.
-							</div>
-						{/if}
-					</div>
+					<!-- svelte-ignore a11y_label_has_associated_control -->
+					<label class="form-label">시간 범위</label>
 					<div class="form-row">
 						<div class="form-group flex-1">
 							<label for="mannamTimeRangeStart" class="form-sublabel">시작 시간</label>
@@ -354,45 +193,7 @@
 
 				<!-- 시간 슬롯 단위 -->
 				<div class="form-group">
-					<div class="label-with-help">
-						<label for="mannamTimeSlotMinutes" class="form-label">시간 슬롯 단위</label>
-						<button
-							type="button"
-							class="help-icon"
-							aria-label="시간 슬롯에 대한 도움말"
-							on:mouseenter={(e) => {
-								const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-								slotHelpPosition = { x: rect.left, y: rect.top };
-								showSlotHelp = true;
-							}}
-							on:mouseleave={() => (showSlotHelp = false)}
-						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								width="16"
-								height="16"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							>
-								<circle cx="12" cy="12" r="10"></circle>
-								<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-								<line x1="12" y1="17" x2="12.01" y2="17"></line>
-							</svg>
-						</button>
-						{#if showSlotHelp}
-							<div
-								class="help-tooltip"
-								style="left: {slotHelpPosition.x}px; top: {slotHelpPosition.y + 20}px"
-							>
-								시간을 선택할 수 있는 최소 단위입니다. 예를 들어, 30분으로 설정하면 30분 단위로 시간을 선택할
-								수 있습니다.
-							</div>
-						{/if}
-					</div>
+					<label for="mannamTimeSlotMinutes" class="form-label">시간 슬롯 단위</label>
 					<select id="mannamTimeSlotMinutes" bind:value={mannamTimeSlotMinutes} class="form-input">
 						<option value={15}>15분</option>
 						<option value={30}>30분</option>
@@ -403,7 +204,14 @@
 				<!-- 폼 액션 버튼 -->
 				<div class="form-actions">
 					<Button variant="outline" on:click={() => history.back()} flex={1}>취소</Button>
-					<Button variant="primary" type="submit" flex={2}>만남 생성하기</Button>
+					<Button 
+						variant="primary" 
+						type="submit" 
+						flex={2} 
+						disabled={!mannamTitle.trim()}
+					>
+						만남 생성하기
+					</Button>
 				</div>
 			</form>
 		</div>
@@ -499,6 +307,7 @@
 		font-size: 0.875rem;
 		font-weight: 500;
 		color: #374151;
+		margin-top: 2rem;
 		margin-bottom: 0.5rem;
 	}
 
@@ -531,51 +340,6 @@
 		background-repeat: no-repeat;
 		background-size: 1.5em 1.5em;
 		padding-right: 2.5rem;
-	}
-
-	.label-with-help {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.help-icon {
-		cursor: pointer;
-		color: #6b7280;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		transition: color 0.2s;
-		background: none;
-		border: none;
-		padding: 0;
-	}
-
-	.help-icon:hover {
-		color: #374151;
-	}
-
-	.help-tooltip {
-		position: fixed;
-		background: #fff;
-		padding: 0.75rem 1rem;
-		border-radius: 8px;
-		box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-		max-width: 300px;
-		z-index: 1000;
-		font-size: 0.875rem;
-		line-height: 1.5;
-		color: #374151;
-		border: 1px solid #e5e7eb;
-	}
-
-	.date-range-info {
-		display: flex;
-		align-items: center;
-		gap: 0.25rem;
-		color: #4b5563;
-		font-size: 0.775rem;
-		margin: -0.75rem 0 1.5rem 0;
 	}
 
 	.form-actions {

@@ -35,6 +35,7 @@
 		"vite": "^6.0.0"
 	},
 	"dependencies": {
+		"@beyonk/svelte-datepicker": "^13.0.4",
 		"@event-calendar/core": "^3.10.0",
 		"@event-calendar/time-grid": "^3.10.0",
 		"@supabase/supabase-js": "^2.48.1",
