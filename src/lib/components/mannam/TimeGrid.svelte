@@ -140,90 +140,70 @@
 <style>
   .time-grid-container {
     width: 100%;
-    max-width: 500px;
-    margin: 0 auto;
-    overflow-x: hidden;
-    user-select: none;
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+    border: 1px solid #e5e7eb;
+    border-right: none;
+    border-bottom: none;
   }
 
   .time-grid-header {
     display: flex;
     border-bottom: 1px solid #e5e7eb;
-    position: sticky;
-    top: 0;
     background-color: white;
-    z-index: 10;
   }
 
   .time-label-column {
-    width: 3rem;
-    flex-shrink: 0;
-    position: sticky;
-    left: 0;
-    background-color: white;
-    z-index: 20;
+    width: 60px;
+    background: white;
+    border-right: 1px solid #e5e7eb;
+  }
+
+  .time-label {
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    font-size: 0.875rem;
+    color: #6b7280;
+    border-bottom: 1px solid #f3f4f6;
+    padding-right: 0.75rem;
   }
 
   .date-header {
     flex: 1;
-    padding: 0.5rem 0.25rem;
     text-align: center;
-    border-left: 1px solid #e5e7eb;
+    padding: 0.25rem 0;
+    border-right: 1px solid #e5e7eb;
   }
 
   .date-label {
+    font-size: 0.675rem;
+    color: #374151;
     font-weight: 500;
   }
-
-  .day-label {
-    font-size: 0.875rem;
-    color: #6b7280;
-    margin-left: 0.25rem;
-  }
-
+  
   .time-grid {
     display: flex;
-    position: relative;
-    width: 100%;
-  }
-
-  .time-label {
-    height: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: 0.5rem;
-    font-size: 0.875rem;
-    color: #6b7280;
   }
 
   .date-column {
     flex: 1;
-    border-left: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
   }
 
   .time-slot {
-    height: 2rem;
+    height: 32px;
     border-bottom: 1px solid #f3f4f6;
     cursor: pointer;
-    transition: background-color 0.1s;
+    transition: background-color 0.15s ease;
   }
 
   .time-slot:hover {
-    background-color: #dbeafe;
-  }
-
-  .time-slot.selected {
-    background-color: #064B45;
-    opacity: 0.9;
-  }
-
-  .time-slot:hover:not(.selected) {
     background-color: rgba(6, 75, 69, 0.1);
   }
 
-
+  .time-slot.selected {
+    background-color: #064B45 !important;
+    opacity: 0.9;
+  }
 </style>

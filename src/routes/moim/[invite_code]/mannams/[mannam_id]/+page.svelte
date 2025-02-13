@@ -283,20 +283,19 @@
 				</div>
 
 				<!-- 전체 응답 현황 섹션 -->
-				<div class="info-box">
+				<div class="info-box response-status">
 					<h2 class="section-title">전체 응답 현황</h2>
-					<div class="grid-container">
-						<TimeGrid
-							startDate={mannam.start_date}
-							endDate={mannam.end_date}
-							timeRange={mannam.time_range}
-							timeSlotMinutes={mannam.time_slot_minutes}
-							readOnly={true}
-							{heatmapData}
-						/>
-						<p class="caption">* 색상이 진할수록 더 많은 참여자가 가능한 시간입니다.</p>
-					</div>
-					<!-- 응답자 해시태그 (인라인 레이블) -->
+					<TimeGrid
+						startDate={mannam.start_date}
+						endDate={mannam.end_date}
+						timeRange={mannam.time_range}
+						timeSlotMinutes={mannam.time_slot_minutes}
+						readOnly={true}
+						{heatmapData}
+					/>
+					<p class="grid-caption">* 색상이 진할수록 더 많은 참여자가 가능한 시간입니다.</p>
+					
+					<!-- 응답자 해시태그 -->
 					<div class="badge-container">
 						{#each responses as response, index}
 							<span
@@ -381,130 +380,111 @@
 	:global(body) {
 		background-color: white;
 		margin: 0;
-		font-family:
-			'Pretendard Variable',
-			-apple-system,
-			BlinkMacSystemFont,
-			system-ui,
-			Roboto,
-			sans-serif;
+		font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
 	}
 	.moim-container {
-		margin: 0 auto;
 		width: 100%;
 		max-width: 500px;
-		padding: 1.5rem 1rem;
+		margin: 0 auto;
 	}
 	.moim-content-wrapper {
-		overflow: hidden;
+		background: white;
 	}
 	.moim-header {
 		display: flex;
-		gap: 0.5rem;
-		padding: 0.75rem 0;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 1rem;
 		border-bottom: 1px solid #f0f0f0;
-		margin-bottom: 1rem;
-		z-index: 100;
 	}
 	.back-btn {
 		background: none;
 		border: none;
+		padding: 0;
 		cursor: pointer;
 		color: #064b45;
-		transition: color 0.2s;
-	}
-	.back-btn:hover {
-		color: #043835;
+		display: flex;
+		align-items: center;
 	}
 	.moim-title {
-		font-size: 1.5rem;
-		margin: 0;
-		text-align: left;
-		color: #333;
-		flex: 1;
-	}
-	.moim-content {
-		display: flex;
-		flex-direction: column;
-		gap: 1.5rem;
-	}
-	.info-box {
-		background: #fafafa;
-		padding: 1rem;
-		border-radius: 8px;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-	}
-	.section-title {
 		font-size: 1.25rem;
 		font-weight: 600;
-		margin-bottom: 0.75rem;
-		color: #333;
+		margin: 0;
+		color: #111827;
+	}
+	.moim-content {
+		padding: 1rem;
+	}
+	.info-box {
+		background: #f9fafb;
+		padding: 1rem;
+		border-radius: 8px;
+		margin-bottom: 1rem;
+	}
+	.section-title {
+		font-size: 1.125rem;
+		font-weight: 600;
+		margin: 0 0 1rem 0;
+		color: #111827;
 	}
 	.section-description,
 	.no-description {
-		margin-bottom: 0.5rem;
-		font-size: 1rem;
-		color: #4a5568;
+		margin: 0 0 1rem 0;
+		color: #4b5563;
+		font-size: 0.875rem;
+		line-height: 1.5;
 	}
 	.meta {
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
+		margin-bottom: 2rem;
 	}
 	.info-item {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		color: #4b5563;
+		color: #6b7280;
+		font-size: 0.875rem;
 	}
 	.info-icon {
-		height: 1.25rem;
 		width: 1.25rem;
+		height: 1.25rem;
 	}
 	.grid-container {
-		width: 100%;
-		overflow-x: auto;
-		-webkit-overflow-scrolling: touch;
+		display: flex;
+		justify-content: center;
+		margin: 1rem 0;
 	}
-	.caption {
-		margin-top: 0.5rem;
-		font-size: 0.875rem;
-		color: #6b7280;
-	}
-	/* 응답자 해시태그 스타일 (모임장 레이블과 유사) */
 	.badge-container {
-		margin-top: 1rem;
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;
+		margin-top: 0.5rem;
 	}
 	.response-badge {
-		padding: 0.2rem 0.4rem;
+		padding: 0.25rem 0.5rem;
 		border-radius: 4px;
-		font-size: 0.8rem;
+		font-size: 0.75rem;
 		font-weight: 500;
 		color: white;
 	}
-	/* 하단 커스텀 버튼 행 (응답 제출하기 버튼) */
 	.button-row {
-		display: flex;
-		justify-content: center;
-		margin-top: 1.5rem;
+		padding: 1rem;
+		background: white;
+		position: sticky;
+		bottom: 0;
 	}
 	.custom-btn.submit-btn {
-		flex: 1;
-		padding: 0.75rem;
+		width: 100%;
+		padding: 0.875rem;
 		border: none;
-		border-radius: 0.5rem;
+		border-radius: 4px;
+		background-color: #064b45;
+		color: white;
 		font-size: 1rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: background-color 0.2s;
-		background-color: #064b45;
-		color: white;
-	}
-	.custom-btn.submit-btn:hover {
-		background-color: #053c37;
 	}
 	.global-spinner {
 		position: fixed;
@@ -535,6 +515,7 @@
 		margin-top: 1.5rem;
 	}
 	.form-label {
+		display: block;
 		font-size: 0.875rem;
 		font-weight: 500;
 		color: #374151;
@@ -542,11 +523,11 @@
 	}
 	.form-input {
 		width: 100%;
-		padding: 0.625rem;
+		padding: 0.75rem;
 		border: 1px solid #d1d5db;
-		border-radius: 0.5rem;
+		border-radius: 4px;
 		font-size: 0.875rem;
-		transition: all 0.2s;
+		resize: vertical;
 	}
 	.form-input:focus {
 		outline: none;
@@ -557,31 +538,23 @@
 		display: flex;
 		gap: 0.75rem;
 		margin-top: 1.5rem;
-		justify-content: flex-end;
 	}
 	.sheet-btn {
 		flex: 1;
-		padding: 0.75rem 1rem;
+		padding: 0.875rem;
 		border: none;
-		border-radius: 0.5rem;
+		border-radius: 4px;
 		font-size: 1rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: background-color 0.2s;
 	}
 	.sheet-btn.cancel-btn {
-		background-color: #e5e7eb;
+		background-color: #f3f4f6;
 		color: #374151;
-	}
-	.sheet-btn.cancel-btn:hover {
-		background-color: #d1d5db;
 	}
 	.sheet-btn.submit-btn {
 		background-color: #064b45;
 		color: white;
-	}
-	.sheet-btn.submit-btn:hover {
-		background-color: #053c37;
 	}
 	.submit-btn {
 		display: inline-flex;
@@ -599,57 +572,15 @@
 		background-color: #064b45;
 		color: white;
 	}
-	/* TimeGrid 전역 스타일 (필요 시) */
-	:global(.time-grid) {
-		background-color: white;
-		min-width: 500px;
-		max-width: 500px;
+	.response-status {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
 	}
-	:global(.time-grid-cell) {
-		border: 1px solid #e5e7eb;
-		transition: background-color 0.2s;
-		width: 30px;
-		height: 30px;
-	}
-	:global(.time-grid-cell.selected) {
-		background-color: #3b82f6;
-	}
-	:global(.time-grid-cell.heatmap-0) {
-		background-color: #f9fafb;
-	}
-	:global(.time-grid-cell.heatmap-1) {
-		background-color: #dbeafe;
-	}
-	:global(.time-grid-cell.heatmap-2) {
-		background-color: #bfdbfe;
-	}
-	:global(.time-grid-cell.heatmap-3) {
-		background-color: #93c5fd;
-	}
-	:global(.time-grid-cell.heatmap-4) {
-		background-color: #60a5fa;
-	}
-	:global(.time-grid-cell.heatmap-5) {
-		background-color: #3b82f6;
-	}
-	:global(.time-grid-header) {
-		position: sticky;
-		top: 0;
-		z-index: 10;
-		background-color: white;
-		padding: 0.25rem 0.5rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: #374151;
-	}
-	:global(.time-grid-time) {
-		position: sticky;
-		left: 0;
-		z-index: 10;
-		background-color: white;
-		padding: 0.25rem 0.5rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: #374151;
+	.grid-caption {
+		font-size: 0.75rem;
+		color: #6b7280;
+		margin: 0.5rem 0 0 0;
+		text-align: center;
 	}
 </style>
