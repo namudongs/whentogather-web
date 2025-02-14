@@ -24,6 +24,8 @@
 	let isDeleteSheetOpen = false;
 	let isDeleteConfirmSheetOpen = false;
 	let deleteType: 'cancel' | 'delete' | null = null;
+	let timeGridComponent: any;
+	let showAvatars = true;
 
 	interface Profile {
 		id: string;
@@ -88,14 +90,13 @@
 				console.error('응답 데이터 로드 에러:', responsesError);
 				throw new Error('응답 정보를 불러오는데 실패했습니다.');
 			}
-			
-			// 프로필 정보 별도로 로드
+
+			// 프로필 정보 로드
 			const userIds = responsesData.map(r => r.user_id);
-			
-			// 응답이 있는 경우에만 프로필 정보 로드
 			let profilesData: Profile[] = [];
+			
 			if (userIds.length > 0) {
-				const { data, error: profilesError } = await supabase
+				const { data: profiles, error: profilesError } = await supabase
 					.from('profiles')
 					.select('id, name')
 					.in('id', userIds);
@@ -104,13 +105,13 @@
 					console.error('프로필 데이터 로드 에러:', profilesError);
 					throw new Error('프로필 정보를 불러오는데 실패했습니다.');
 				}
-				profilesData = data || [];
+				profilesData = profiles || [];
 			}
 
-			// 응답 데이터와 프로필 정보 매핑
+			// 응답 데이터와 프로필 정보 결합
 			responses = responsesData.map(response => ({
 				...response,
-				user: profilesData.find(p => p.id === response.user_id) || { name: '이름없음' }
+				user: profilesData.find(p => p.id === response.user_id) || { id: response.user_id, name: '이름없음' }
 			}));
 
 			// 5. 내 응답 찾기
@@ -167,8 +168,8 @@
 </script>
 
 {#if loading}
-	<div class="flex justify-center items-center h-32">
-		<Spinner />
+	<div class="global-spinner">
+		<Spinner size="large" />
 	</div>
 {:else if error}
 	<div class="error-container">
@@ -179,7 +180,7 @@
 		<div class="moim-content-wrapper">
 			<header class="moim-header">
 				<div class="header-content">
-					<button class="back-btn font-regular" on:click={() => history.back()}>
+					<button class="back-btn font-regular" on:click={() => goto(`/moim/${$page.params.invite_code}`)}>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							width="24"
@@ -321,6 +322,29 @@
 					<div class="section-header">
 						<div class="title-with-badge">
 							<h2 class="section-title font-bold">응답 현황</h2>
+							<button 
+								class="avatar-toggle-btn font-regular" 
+								on:click={() => showAvatars = !showAvatars}
+							>
+								{#if showAvatars}
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+										<circle cx="9" cy="7" r="4"></circle>
+										<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+										<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+									</svg>
+									<span>아바타 숨기기</span>
+								{:else}
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+										<circle cx="9" cy="7" r="4"></circle>
+										<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+										<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+										<line x1="1" y1="1" x2="23" y2="23"></line>
+									</svg>
+									<span>아바타 표시</span>
+								{/if}
+							</button>
 						</div>
 					</div>
 
@@ -333,6 +357,13 @@
 							{heatmapData}
 							readOnly={true}
 							confirmedSlots={mannam.confirmed_slots || []}
+							bind:showAvatars
+							responses={responses.map(response => ({
+								user: response.user,
+								available_slots: Array.isArray(response.available_slots)
+									? response.available_slots
+									: JSON.parse(response.available_slots || '[]')
+							}))}
 						/>
 					</div>
 
@@ -430,13 +461,13 @@
 		position: fixed;
 		top: 0;
 		left: 0;
-		width: 100vw;
-		height: 100vh;
-		background: #ffffff;
+		right: 0;
+		bottom: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 1000;
+		background-color: rgba(255, 255, 255, 0.8);
+		z-index: 9999;
 	}
 
 	.error-container {
@@ -857,5 +888,29 @@
 		border-color: #064b45;
 		color: #064b45;
 		background: white;
+	}
+
+	.avatar-toggle-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.375rem 0.75rem;
+		background: #f3f4f6;
+		border: none;
+		border-radius: 9999px;
+		font-size: 0.75rem;
+		color: #374151;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		margin-left: 0.5rem;
+	}
+
+	.avatar-toggle-btn:hover {
+		background-color: #e5e7eb;
+		color: #064b45;
+	}
+
+	.avatar-toggle-btn svg {
+		color: currentColor;
 	}
 </style>

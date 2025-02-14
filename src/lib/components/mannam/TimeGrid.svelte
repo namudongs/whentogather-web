@@ -4,6 +4,7 @@
   import { format, addDays } from 'date-fns';
   import { ko } from 'date-fns/locale/ko';
   import { onMount } from 'svelte';
+  import ParticipantAvatar from '$lib/components/ParticipantAvatar.svelte';
 
   export let startDate: string;
   export let endDate: string;
@@ -13,6 +14,8 @@
   export let readOnly: boolean = true;
   export let confirmedSlots: { date: string; slot: string }[] = [];
   export let selectedSlots: { date: string; slot: string }[] = [];
+  export let responses: { user: { id: string; name: string }; available_slots: { date: string; slot: string }[] }[] = [];
+  export let showAvatars: boolean = true;
 
   const dispatch = createEventDispatcher();
 
@@ -178,10 +181,33 @@
   }
 
   function getHeatmapColor(count: number): string {
-    if (count === 0) return 'bg-gray-50';
-    const maxCount = Math.max(...Object.values(heatmapData));
-    const intensity = Math.min(Math.floor((count / maxCount) * 5), 4);
-    return `bg-primary-${(intensity + 1) * 100}`;
+    if (count === 0) return '';
+    // 20명을 최대값으로 설정하고, 실제 최대값이 20명 이하일 경우 그 값을 사용
+    const maxCount = Math.min(20, Math.max(...Object.values(heatmapData)));
+    // 0.1부터 0.8까지 단계적으로 증가하도록 설정
+    const alpha = 0.1 + (count / maxCount) * 0.7;
+    return `background-color: rgba(6, 75, 69, ${alpha})`;
+  }
+
+  function getRespondents(date: string, slot: string): { id: string; name: string }[] {
+    return responses
+      .filter(response => 
+        response.available_slots.some(s => s.date === date && s.slot === slot)
+      )
+      .map(response => response.user);
+  }
+
+  function getRespondentsText(respondents: { name: string }[]): string {
+    return `응답자: ${respondents.map(r => r.name).join(', ')}`;
+  }
+
+  function getInitial(name: string): string {
+    return name.charAt(0).toUpperCase();
+  }
+
+  function toggleAvatars() {
+    showAvatars = !showAvatars;
+    dispatch('toggleAvatars', { showAvatars });
   }
 </script>
 
@@ -204,6 +230,7 @@
           {@const count = heatmapData[`${formattedDate}-${slot}`] || 0}
           {@const isSelected = isSlotSelected(date, slot)}
           {@const isConfirmed = isSlotConfirmed(date, slot)}
+          {@const respondents = getRespondents(formattedDate, slot)}
           <button
             class="time-slot"
             class:selected={isSelected}
@@ -212,7 +239,7 @@
             class:clickable={!readOnly}
             class:has-responses={count > 0}
             class:most-responses={count === Math.max(...Object.values(heatmapData)) && count > 1}
-            style="--response-count: {count};"
+            style="{getHeatmapColor(count)}"
             on:click={(e) => handleSlotClick(e, date, slot)}
             on:mousedown={(e) => handleDragStart(e, date, slot)}
             on:mousemove={(e) => {
@@ -224,10 +251,23 @@
             on:touchmove={handleTouchMove}
             data-date={formattedDate}
             data-slot={slot}
+            title={count > 0 ? getRespondentsText(respondents) : ''}
           >
-            <div class="response-indicator" class:visible={count > 0}>
-              {count}
-            </div>
+            {#if count > 0 && showAvatars}
+              <div class="respondents-stack">
+                {#each respondents.slice(0, 20) as respondent, i}
+                  <div 
+                    class="respondent-wrapper" 
+                    style="
+                      z-index: {20 - i}; 
+                      margin-left: {i === 0 ? 0 : -14 - (respondents.length - 1) * 0.5}px;
+                    "
+                  >
+                    <ParticipantAvatar name={respondent.name} size="sm" />
+                  </div>
+                {/each}
+              </div>
+            {/if}
           </button>
         {/each}
       </div>
@@ -260,6 +300,7 @@
     font-size: 0.75rem;
     color: #6b7280;
     border-right: 1px solid #e5e7eb;
+    position: relative;
   }
 
   .date-column-header {
@@ -310,7 +351,7 @@
 
   .time-slot {
     position: relative;
-    padding: 0.5rem;
+    padding: 0.25rem;
     border: none;
     border-right: 1px solid #e5e7eb;
     background: none;
@@ -320,6 +361,7 @@
     align-items: center;
     justify-content: center;
     min-height: 2.5rem;
+    height: 2.5rem;
     user-select: none;
   }
 
@@ -335,21 +377,17 @@
     background-color: #064b45 !important;
   }
 
-  .time-slot.selected .response-indicator {
-    color: white !important;
-  }
-
   .time-slot.confirmed {
     background-color: #064b45 !important;
     border: 2px solid #053c37;
   }
 
   .time-slot.has-responses {
-    background-color: rgb(243 244 246);
+    background-color: rgba(6, 75, 69, 0.1);
   }
 
   .time-slot.most-responses {
-    background-color: rgb(229 231 235);
+    background-color: rgba(6, 75, 69, 0.3);
   }
 
   .time-slot.readonly {
@@ -360,44 +398,47 @@
     background-color: #053c37 !important;
   }
 
-  .response-indicator {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 0.75rem;
-    color: #6b7280;
-    opacity: 0;
-    transition: opacity 0.2s ease;
+  .respondents-stack {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 0;
   }
 
-  .response-indicator.visible {
-    opacity: 1;
+  .respondent-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .time-slot.selected .response-indicator,
-  .time-slot.confirmed .response-indicator {
-    color: white;
+  .respondent-wrapper :global(.participant-badge) {
+    margin: 0;
+    padding: 0;
+    border: 1.5px solid white;
+    transform: scale(0.7);
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  :global(.bg-primary-100) {
-    background-color: rgb(243 244 246);
+  .respondent-wrapper :global(.participant-badge .name) {
+    display: none;
   }
 
-  :global(.bg-primary-200) {
-    background-color: rgb(229 231 235);
+  .respondent-wrapper :global(.participant-badge .avatar) {
+    width: 22px !important;
+    height: 22px !important;
   }
 
-  :global(.bg-primary-300) {
-    background-color: rgb(209 213 219);
+  .time-slot.selected .respondent-wrapper :global(.participant-badge) {
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.1);
   }
 
-  :global(.bg-primary-400) {
-    background-color: rgb(156 163 175);
-  }
-
-  :global(.bg-primary-500) {
-    background-color: rgb(107 114 128);
-  }
 </style>
 

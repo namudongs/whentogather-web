@@ -22,6 +22,11 @@
 	let selectedSlots: { date: string; slot: string }[] = [];
 	let isConfirmSheetOpen = false;
 
+	interface Profile {
+		id: string;
+		name: string;
+	}
+
 	onMount(loadData);
 
 	async function loadData() {
@@ -72,7 +77,28 @@
 				throw new Error('응답 정보를 불러오는데 실패했습니다.');
 			}
 
-			responses = responsesData;
+			// 프로필 정보 로드
+			const userIds = responsesData.map(r => r.user_id);
+			let profilesData: Profile[] = [];
+			
+			if (userIds.length > 0) {
+				const { data: profiles, error: profilesError } = await supabase
+					.from('profiles')
+					.select('id, name')
+					.in('id', userIds);
+
+				if (profilesError) {
+					console.error('프로필 데이터 로드 에러:', profilesError);
+					throw new Error('프로필 정보를 불러오는데 실패했습니다.');
+				}
+				profilesData = profiles || [];
+			}
+
+			// 응답 데이터와 프로필 정보 결합
+			responses = responsesData.map(response => ({
+				...response,
+				user: profilesData.find(p => p.id === response.user_id) || { id: response.user_id, name: '이름없음' }
+			}));
 
 			// 5. 히트맵 데이터 생성
 			heatmapData = responses.reduce((acc: any, response) => {
@@ -180,6 +206,12 @@
 							readOnly={false}
 							on:change={handleSlotsChange}
 							{selectedSlots}
+							responses={responses.map(response => ({
+								user: response.user,
+								available_slots: Array.isArray(response.available_slots)
+									? response.available_slots
+									: JSON.parse(response.available_slots || '[]')
+							}))}
 						/>
 					</div>
 
