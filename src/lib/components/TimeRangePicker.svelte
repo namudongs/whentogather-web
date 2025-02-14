@@ -8,11 +8,6 @@
 	export let label = '시간 범위';
 	export let required = false;
 
-	const dispatch = createEventDispatcher<{
-		change: { startTime: string; endTime: string };
-		clickoutside: void;
-	}>();
-
 	let showBottomSheet = false;
 	let tempStartTime = startTime;
 	let tempEndTime = endTime;
@@ -122,8 +117,8 @@
 		</div>
 	</div>
 	<div class="bottom-actions">
-		<button class="action-button cancel" on:click={handleCancel}>취소</button>
-		<button class="action-button confirm" on:click={handleConfirm}>확인</button>
+		<button type="button" class="action-button cancel" on:click={handleCancel}>취소</button>
+		<button type="button" class="action-button confirm" on:click={handleConfirm}>확인</button>
 	</div>
 </BottomSheet>
 

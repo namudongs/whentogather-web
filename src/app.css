@@ -4,7 +4,7 @@
 body {
     background-color: var(--background-color);
     color: var(--text-color);
-    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    font-family: var(--main-font);
 }
 
 .modal-overlay {

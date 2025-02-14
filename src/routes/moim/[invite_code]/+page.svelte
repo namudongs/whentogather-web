@@ -9,6 +9,8 @@
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 	import BottomSheet from '$lib/components/BottomSheet.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import ParticipantAvatar from '$lib/components/ParticipantAvatar.svelte';
+	import Toast from '$lib/components/Toast.svelte';
 	import { user } from '$lib/stores/auth';
 
 	/*** 페이지 전역 상태 ***/
@@ -18,13 +20,24 @@
 	let errorMessage = '';
 	let loading = true;
 
-	// URL 파라미터에서 초대 코드를 추출
-	let inviteCode = '';
-	$: inviteCode = $page.params.invite_code;
+	// 토스트 상태
+	let showToast = false;
+	let toastMessage = '';
+	let toastType: 'success' | 'error' | 'info' = 'success';
 
 	// 모달 상태
 	let showJoinModal = false;
 	let showCreateMannamSheet = false;
+	let showEditMoimSheet = false;
+	let showDeleteConfirmSheet = false;
+
+	// 모임 수정 폼 데이터
+	let editTitle = '';
+	let editDescription = '';
+
+	// URL 파라미터에서 초대 코드를 추출
+	let inviteCode = '';
+	$: inviteCode = $page.params.invite_code;
 
 	// 만남 생성 폼 데이터
 	let mannamTitle = '';
@@ -54,7 +67,7 @@
 		}
 	}
 
-	/*** 도움말(툴팁) 상태 – 각 도움말 아이콘마다 별도의 상태와 위치를 관리 ***/
+	/*** 도움말(툴클) 상태 – 각 도움말 아이콘마다 별도의 상태와 위치를 관리 ***/
 	let showStartDateHelp = false;
 	let startDateHelpPosition = { x: 0, y: 0 };
 
@@ -208,6 +221,68 @@
 		goto('/dashboard');
 	}
 
+	function copyInviteLink() {
+		const inviteLink = `${window.location.origin}/moim/${inviteCode}/invite`;
+		navigator.clipboard.writeText(inviteLink);
+		toastMessage = '초대 링크가 복사되었습니다';
+		toastType = 'success';
+		showToast = true;
+	}
+
+	function openEditMoimSheet() {
+		editTitle = moim.title;
+		editDescription = moim.description || '';
+		showEditMoimSheet = true;
+	}
+
+	async function handleEditMoim() {
+		if (!editTitle.trim()) return;
+
+		try {
+			const { error } = await supabase
+				.from('moims')
+				.update({
+					title: editTitle,
+					description: editDescription
+				})
+				.eq('id', moim.id);
+
+			if (error) throw error;
+
+			moim = { ...moim, title: editTitle, description: editDescription };
+			showEditMoimSheet = false;
+			toastMessage = '모임 정보가 수정되었습니다';
+			toastType = 'success';
+			showToast = true;
+		} catch (err) {
+			toastMessage = '모임 정보 수정에 실패했습니다';
+			toastType = 'error';
+			showToast = true;
+		}
+	}
+
+	async function handleDeleteMoim() {
+		try {
+			const { error } = await supabase
+				.from('moims')
+				.delete()
+				.eq('id', moim.id);
+
+			if (error) throw error;
+
+			showDeleteConfirmSheet = false;
+			goto('/dashboard');
+		} catch (err) {
+			toastMessage = '모임 삭제에 실패했습니다';
+			toastType = 'error';
+			showToast = true;
+		}
+	}
+
+	function goToCreateMannam() {
+		goto(`/moim/${inviteCode}/mannams/create`);
+	}
+
 	function openCreateMannamSheet() {
 		showCreateMannamSheet = true;
 	}
@@ -275,277 +350,251 @@
 	<div class="global-spinner">
 		<Spinner size="large" />
 	</div>
+{:else if errorMessage}
+	<div class="error-container">
+		<ErrorMessage message={errorMessage} />
+		<Button variant="outline" on:click={goBack} class="font-regular">돌아가기</Button>
+	</div>
 {:else}
-	<div class="moim-container">
+	<div class="moim-container" in:fade={{duration: 200}}>
 		<div class="moim-content-wrapper">
 			<header class="moim-header">
-				<button class="back-btn" on:click={goBack} aria-label="Go back">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="24"
-						height="24"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					>
-						<path d="M19 12H5" />
-						<path d="M12 19l-7-7 7-7" />
-					</svg>
-				</button>
-				<h1 class="moim-title font-extrabold">
-					{moim ? moim.title : '모임 상세'}
-				</h1>
+				<div class="header-content">
+					<button class="back-btn font-regular" on:click={goBack}>
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M19 12H5M12 19l-7-7 7-7"/>
+						</svg>
+					</button>
+					<div class="title-with-badge">
+						<span class="header-badge font-regular">모임</span>
+						<h1 class="moim-title font-extrabold">{moim?.title || '모임 상세'}</h1>
+					</div>
+				</div>
 			</header>
 
 			<main class="moim-content">
-				{#if errorMessage}
-					<p class="error">{errorMessage}</p>
-				{:else if moim}
-					<!-- 모임 정보 섹션 -->
-					<section class="moim-info info-box">
+				{#if moim}
+					<!-- 모임 설명 섹션 -->
+					<section class="moim-description-section">
 						{#if moim.description}
-							<p class="moim-description">{moim.description}</p>
-						{:else}
-							<p class="no-description">설명 없음</p>
+							<p class="moim-description font-regular">{moim.description}</p>
 						{/if}
-						<p class="meta">
-							<strong>생성일:</strong>
-							{new Date(moim.created_at).toLocaleString()}
-						</p>
-						<p class="meta">
-							<strong>마지막 업데이트:</strong>
-							{new Date(moim.updated_at).toLocaleString()}
-						</p>
-					</section>
-
-					<!-- 참여자 목록 섹션 -->
-					<section class="participants-box info-box">
-						<h2 class="section-title">참여자 목록</h2>
-						{#if participants.length > 0}
-							<ul class="participants-list">
-								{#each participants as participant}
-									<li class="participant-item">
-										<span class="participant-name">
-											{participant.profile?.name || '이름 없음'}
-										</span>
-										{#if participant.role === 'creator'}
-											<span class="creator-tag">모임장</span>
-										{/if}
-									</li>
-								{/each}
-							</ul>
-						{:else}
-							<p class="no-participants">아직 참여자가 없습니다.</p>
-						{/if}
-					</section>
-
-					<!-- 만남 목록 섹션 -->
-					<section class="mannams-box info-box">
-						<div class="mannams-header">
-							<h2 class="section-title">만남 목록</h2>
-							<a href="/moim/{inviteCode}/mannams/create" class="add-mannam-btn">
-								<svg
-									class="h-4 w-4"
-									xmlns="http://www.w3.org/2000/svg"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								>
-									<line x1="12" y1="5" x2="12" y2="19" />
-									<line x1="5" y1="12" x2="19" y2="12" />
+						<div class="moim-actions">
+							<button class="action-badge font-regular" on:click={copyInviteLink}>
+								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+									<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
 								</svg>
-								만남 추가하기
-							</a>
+								초대 링크 복사
+							</button>
+							<button class="action-badge font-regular" on:click={openEditMoimSheet}>
+								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M12 20h9"></path>
+									<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+								</svg>
+								모임 정보 수정
+							</button>
+							<button class="action-badge warning font-regular" on:click={() => (showDeleteConfirmSheet = true)}>
+								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M3 6h18"></path>
+									<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+									<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+								</svg>
+								모임 삭제
+							</button>
 						</div>
-						{#if mannams.length > 0}
-							<div class="mannams-list">
-								{#each mannams as mannam}
-									<!-- svelte-ignore a11y_click_events_have_key_events -->
-									<div
-										class="mannam-cell"
-										on:click={() => goto(`/moim/${inviteCode}/mannams/${mannam.id}`)}
-										role="button"
-										tabindex="0"
-									>
-										<h3 class="mannam-title">{mannam.title}</h3>
-										{#if mannam.description}
-											<p class="mannam-description">{mannam.description}</p>
-										{/if}
-										<div class="mannam-meta">
-											<p class="meta">
-												생성일: {new Date(mannam.created_at).toLocaleDateString()}
-											</p>
-											<p class="meta status {mannam.status}">
-												{#if mannam.status === 'pending'}
-													대기중
-												{:else if mannam.status === 'confirmed'}
-													확정됨
-												{:else}
-													취소됨
-												{/if}
-											</p>
-										</div>
-									</div>
-								{/each}
+					</section>
+
+					<!-- 참여자 섹션 -->
+					<section class="moim-section">
+						<div class="section-header">
+							<div class="title-with-badge">
+								<h2 class="section-title font-bold">참여자</h2>
+								<div class="count-badge font-regular">
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+										<circle cx="9" cy="7" r="4"></circle>
+										<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+										<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+									</svg>
+									{participants.length}명
+								</div>
 							</div>
-						{:else}
-							<div class="empty-mannams">
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									width="48"
-									height="48"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="1"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								>
-									<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-									<circle cx="9" cy="7" r="4"></circle>
-									<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-									<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+						</div>
+						<div class="participants-grid">
+							{#each participants as participant}
+								<ParticipantAvatar
+									name={participant.profile?.name || '이름없음'}
+									role={participant.role}
+								/>
+							{/each}
+						</div>
+					</section>
+
+					<!-- 만남 섹션 -->
+					<section class="moim-section">
+						<div class="section-header">
+							<div class="title-with-badge">
+								<h2 class="section-title font-bold">만남</h2>
+								<div class="count-badge font-regular">
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+										<line x1="16" y1="2" x2="16" y2="6"></line>
+										<line x1="8" y1="2" x2="8" y2="6"></line>
+										<line x1="3" y1="10" x2="21" y2="10"></line>
+									</svg>
+									{mannams.length}개
+								</div>
+							</div>
+						</div>
+
+						<div class="mannams-container">
+							<Button 
+								variant="primary" 
+								on:click={goToCreateMannam} 
+								class="create-mannam-btn font-bold"
+							>
+								<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<line x1="12" y1="5" x2="12" y2="19"></line>
+									<line x1="5" y1="12" x2="19" y2="12"></line>
 								</svg>
-								<p class="empty-text">아직 만남이 없어요.</p>
-							</div>
-						{/if}
+								새로운 만남 만들기
+							</Button>
+							
+							{#if mannams.length > 0}
+								<div class="mannams-grid">
+									{#each mannams as mannam}
+										<a href="/moim/{inviteCode}/mannams/{mannam.id}" class="mannam-card">
+											<div class="mannam-status-indicator" class:pending={mannam.status === 'pending'} class:confirmed={mannam.status === 'confirmed'}></div>
+											<div class="mannam-content">
+												<h3 class="mannam-title font-bold">{mannam.title}</h3>
+												{#if mannam.description}
+													<p class="mannam-description font-regular">{mannam.description}</p>
+												{/if}
+												<div class="mannam-meta font-light">
+													<span class="meta-item">
+														<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+															<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+															<line x1="16" y1="2" x2="16" y2="6"></line>
+															<line x1="8" y1="2" x2="8" y2="6"></line>
+															<line x1="3" y1="10" x2="21" y2="10"></line>
+														</svg>
+														{new Date(mannam.start_date).toLocaleDateString()} - {new Date(mannam.end_date).toLocaleDateString()}
+													</span>
+													<span class="meta-item">
+														<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+															<circle cx="12" cy="12" r="10"></circle>
+															<polyline points="12 6 12 12 16 14"></polyline>
+														</svg>
+														{mannam.time_range.start} - {mannam.time_range.end}
+													</span>
+												</div>
+											</div>
+										</a>
+									{/each}
+								</div>
+							{:else}
+								<div class="empty-state">
+									<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+										<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+										<line x1="16" y1="2" x2="16" y2="6"></line>
+										<line x1="8" y1="2" x2="8" y2="6"></line>
+										<line x1="3" y1="10" x2="21" y2="10"></line>
+									</svg>
+									<p class="font-regular">아직 만남이 없습니다</p>
+									<p class="subtitle font-light">새로운 만남을 만들어보세요</p>
+								</div>
+							{/if}
+						</div>
 					</section>
 				{:else}
-					<p class="not-found">해당 모임 정보를 찾을 수 없습니다.</p>
+					<div class="empty-state">
+						<p class="font-regular">모임 정보를 찾을 수 없습니다</p>
+					</div>
 				{/if}
 			</main>
 		</div>
 	</div>
 {/if}
 
-<!-- 모임 참여 바텀시트 -->
-<BottomSheet
-	show={showJoinModal}
-	onClose={() => goto('/dashboard')}
-	title="모임 참여"
-	blurBackground={true}
->
-	<div class="join-sheet-content">
-		<p class="join-description">이 모임에 참여하시겠습니까?</p>
-		<div class="join-description-sub">모임에 참여하면 일정 조율에 참여할 수 있습니다.</div>
+<Toast
+	message={toastMessage}
+	type={toastType}
+	bind:show={showToast}
+/>
+
+<BottomSheet show={showJoinModal} onClose={() => (showJoinModal = false)} title="모임 참여하기">
+	<div class="join-content">
+		<p class="join-message font-bold">"{moim?.title}" 모임에 참여하시겠습니까?</p>
+		<p class="join-description font-regular">모임에 참여하면 일정 조율에 참여할 수 있습니다.</p>
 		<div class="form-actions">
-			<Button variant="outline" on:click={() => goto('/dashboard')} flex={1}>돌아가기</Button>
-			<Button variant="primary" on:click={joinMoim} flex={2}>참여하기</Button>
+			<Button variant="outline" on:click={() => (showJoinModal = false)} flex={1} class="font-regular">취소</Button>
+			<Button variant="primary" on:click={joinMoim} flex={2} class="font-bold">참여하기</Button>
 		</div>
 	</div>
 </BottomSheet>
 
+<BottomSheet show={showEditMoimSheet} onClose={() => (showEditMoimSheet = false)} title="모임 정보 수정">
+	<form on:submit|preventDefault={handleEditMoim} class="create-form">
+		<div class="form-group">
+			<label for="title" class="font-bold">모임 제목</label>
+			<input
+				id="title"
+				type="text"
+				bind:value={editTitle}
+				placeholder="예: 동아리 회의"
+				class="form-input font-regular"
+			/>
+		</div>
+		<div class="form-group">
+			<label for="description" class="font-bold">모임 설명 (선택)</label>
+			<textarea
+				id="description"
+				bind:value={editDescription}
+				placeholder="모임에 대한 간단한 소개 또는 설명을 작성해 주세요."
+				class="form-input font-regular"
+				rows="4"
+			></textarea>
+		</div>
+		<div class="form-actions">
+			<Button
+				variant="outline"
+				on:click={() => (showEditMoimSheet = false)}
+				flex={1}
+				class="font-regular"
+			>취소</Button>
+			<Button
+				variant="primary"
+				type="submit"
+				flex={2}
+				class="font-bold"
+			>수정하기</Button>
+		</div>
+	</form>
+</BottomSheet>
+
+<BottomSheet show={showDeleteConfirmSheet} onClose={() => (showDeleteConfirmSheet = false)} title="모임 삭제">
+	<div class="delete-confirm-content">
+		<p class="delete-message font-bold">"{moim?.title}" 모임을 삭제하시겠습니까?</p>
+		<p class="delete-description font-regular">모임을 삭제하면 모든 만남과 참여자 정보가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</p>
+		<div class="form-actions">
+			<Button
+				variant="outline"
+				on:click={() => (showDeleteConfirmSheet = false)}
+				flex={1}
+				class="font-regular"
+			>취소</Button>
+			<Button
+				variant="primary"
+				on:click={handleDeleteMoim}
+				flex={2}
+				class="font-bold"
+			>삭제하기</Button>
+		</div>
+	</div>
+</BottomSheet>
 
 <style>
-	.date-range-info {
-		display: flex;
-		align-items: center;
-		gap: 0.25rem;
-		border-radius: 0.375rem;
-		color: #4b5563;
-		font-size: 0.775rem;
-    margin-top: -0.5rem;
-	}
-
-	.info-icon {
-		color: #6b7280;
-	}
-
-	:global(body) {
-		margin: 0;
-		background: white;
-		font-family:
-			'Pretendard Variable',
-			-apple-system,
-			BlinkMacSystemFont,
-			system-ui,
-			Roboto,
-			sans-serif;
-	}
-
-	.label-with-help {
-		position: relative;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.help-icon {
-		cursor: pointer;
-		color: #6d7178;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		transition: color 0.2s;
-		opacity: 0.9;
-		background: none;
-		border: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	.help-icon:hover {
-		color: #374151;
-	}
-
-	/* 툴팁은 position: fixed로 처리하여 getBoundingClientRect()로 구한 뷰포트 좌표를 그대로 사용 */
-	.help-tooltip {
-		position: fixed;
-		background: #fff;
-		padding: 0.75rem 1rem;
-		border-radius: 8px;
-		box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-		max-width: 300px;
-		z-index: 1000;
-		font-size: 0.875rem;
-		line-height: 1.5;
-		color: #374151;
-		border: 1px solid #e5e7eb;
-	}
-
-	.form-label {
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: #374151;
-	}
-
-	.form-sublabel {
-		font-size: 0.813rem;
-		color: #6b7280;
-	}
-
-	.form-input {
-		width: 100%;
-		padding: 0.625rem;
-		border: 1px solid #d1d5db;
-		border-radius: 0.5rem;
-		font-size: 0.875rem;
-		transition: all 0.2s;
-	}
-
-	.form-input:focus {
-		outline: none;
-		border-color: #064b45;
-		box-shadow: 0 0 0 2px rgba(6, 75, 69, 0.1);
-	}
-
-	select.form-input {
-		appearance: none;
-		background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-		background-position: right 0.5rem center;
-		background-repeat: no-repeat;
-		background-size: 1.5em 1.5em;
-		padding-right: 2.5rem;
-	}
-
-	/* 전역 스피너 */
 	.global-spinner {
 		position: fixed;
 		top: 0;
@@ -557,6 +606,15 @@
 		align-items: center;
 		justify-content: center;
 		z-index: 1000;
+	}
+
+	.error-container {
+		max-width: 500px;
+		margin: 2rem auto;
+		padding: 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
 	}
 
 	.moim-container {
@@ -572,156 +630,322 @@
 	}
 
 	.moim-header {
-		display: flex;
-		gap: 0.5rem;
-		padding: 0.75rem 0;
-		border-bottom: 1px solid #f0f0f0;
-		margin-bottom: 1rem;
+		position: sticky;
+		top: 0;
+		background: white;
+		padding: 0.5rem 0;
+		border-bottom: 1px solid #e5e7eb;
+		margin-bottom: 1.25rem;
 		z-index: 100;
+	}
+
+	.header-content {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0 0.5rem;
 	}
 
 	.back-btn {
 		background: none;
 		border: none;
+		padding: 0.5rem;
+		margin-left: -0.5rem;
 		cursor: pointer;
 		color: #064b45;
-		transition: color 0.2s;
-	}
-
-	.back-btn:hover {
-		color: #043835;
+		line-height: 0;
 	}
 
 	.moim-title {
-		font-size: 1.5rem;
 		margin: 0;
-		text-align: left;
-		color: #333;
-		flex: 1;
+		font-size: 1.25rem;
+		color: #111827;
 	}
 
 	.moim-content {
-		display: flex;
-		flex-direction: column;
-		gap: 1.5rem;
+		padding: 0 0.5rem;
 	}
 
-	/* 정보 박스 스타일 */
-	.info-box {
-		background: #fafafa;
-		padding: 1rem;
-		border-radius: 8px;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+	.moim-description-section {
+		margin-bottom: 2rem;
+		padding: 1.5rem;
+		background: #f8fafc;
+		border-radius: 0.75rem;
 	}
 
-	.moim-description,
-	.no-description {
+	.moim-description {
 		margin: 0;
-		font-size: 1rem;
-		color: #4a5568;
+		font-size: 0.875rem;
+		line-height: 1.6;
+		color: #374151;
 	}
 
-	.no-description {
-		font-style: italic;
-		color: #a0aec0;
+	.moim-section {
+		margin-bottom: 2rem;
 	}
 
-	.meta {
-		font-size: 0.9rem;
-		color: #718096;
-		margin-top: 0.5rem;
-	}
-
-	/* 참여자 섹션 */
-	.participants-box {
-		margin-top: 1.5rem;
+	.section-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 1.5rem;
 	}
 
 	.section-title {
 		font-size: 1.25rem;
-		font-weight: 600;
-		margin-bottom: 0.75rem;
-		color: #333;
-	}
-
-	.participants-list {
-		list-style: none;
-		padding: 0;
+		color: #111827;
 		margin: 0;
 	}
 
-	.participant-item {
+	.participant-count {
+		color: #6b7280;
+		font-size: 0.875rem;
+	}
+
+	.participants-grid {
 		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 0.5rem 0;
-		border-bottom: 1px solid #e2e8f0;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin: -0.25rem;
+		padding: 0.25rem;
 	}
 
-	.participant-item:last-child {
-		border-bottom: none;
-	}
-
-	.participant-name {
-		font-size: 1rem;
-		color: #4a5568;
-	}
-
-	.creator-tag {
-		background-color: #064b45;
-		color: white;
-		padding: 0.2rem 0.4rem;
-		border-radius: 4px;
-		font-size: 0.8rem;
-		font-weight: 500;
-	}
-
-	/* 만남 섹션 */
-	.mannams-box {
-		margin-top: 1.5rem;
-	}
-
-	.mannams-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 1rem;
-	}
-
-	.mannams-list {
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-	}
-
-	.add-mannam-btn {
-		display: flex;
-		gap: 0.2rem;
-		background-color: #064b45;
-		color: white;
-		border: none;
-		padding: 0.4rem 0.8rem;
-		border-radius: 4px;
-		cursor: pointer;
-		transition: background-color 0.2s;
-		align-items: center;
-		font-size: 0.8rem;
-		margin-top: -0.5rem;
-	}
-
-	.add-mannam-btn:hover {
-		background-color: #043835;
-	}
-
-	/* 만남 생성 폼 스타일 */
-	.create-mannam-content {
-		padding: 1rem;
-	}
-
-	.create-mannam-form {
+	.mannams-container {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+	}
+
+	.create-mannam-btn {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.75rem;
+		font-size: 0.875rem;
+	}
+
+	.create-mannam-btn svg {
+		width: 1.25rem;
+		height: 1.25rem;
+	}
+
+	.mannam-count {
+		color: #6b7280;
+		font-size: 0.875rem;
+	}
+
+	.mannams-grid {
+		display: grid;
+		gap: 0.75rem;
+	}
+
+	.mannam-card {
+		position: relative;
+		display: block;
+		text-decoration: none;
+		background: white;
+		border: 1px solid #e5e7eb;
+		border-radius: 0.75rem;
+		overflow: hidden;
+		transition: all 0.2s ease;
+	}
+
+	.mannam-card:hover {
+		transform: translateY(-2px);
+		border-color: #064b45;
+		box-shadow: 0 0 0 1px rgba(6, 75, 69, 0.1);
+	}
+
+	.mannam-status-indicator {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 4px;
+		height: 100%;
+		background: #E5E7EB;
+	}
+
+	.mannam-status-indicator.pending {
+		background: rgba(6, 75, 69, 0.5);
+	}
+
+	.mannam-status-indicator.confirmed {
+		background: #064b45;
+	}
+
+	.mannam-content {
+		padding: 1.25rem;
+	}
+
+	.mannam-title {
+		margin: 0;
+		font-size: 1.125rem;
+		color: #111827;
+	}
+
+	.mannam-description {
+		margin: 0.5rem 0;
+		font-size: 0.875rem;
+		color: #374151;
+		line-height: 1.5;
+	}
+
+	.mannam-meta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1rem;
+		margin-top: 1rem;
+		color: #6b7280;
+		font-size: 0.813rem;
+	}
+
+	.meta-item {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+	}
+
+	.empty-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 3rem;
+		background: #f8fafc;
+		border-radius: 0.75rem;
+		color: #374151;
+		text-align: center;
+	}
+
+	.empty-state svg {
+		color: #9ca3af;
+		margin-bottom: 1rem;
+	}
+
+	.empty-state p {
+		margin: 0;
+		font-size: 0.875rem;
+	}
+
+	.empty-state .subtitle {
+		font-size: 0.875rem;
+		color: #6b7280;
+		margin-top: 0.25rem;
+	}
+
+	.join-content {
+		padding: 1.5rem;
+		text-align: center;
+	}
+
+	.join-message {
+		font-size: 1.125rem;
+		color: #111827;
+		margin: 0 0 0.5rem;
+	}
+
+	.join-description {
+		font-size: 0.875rem;
+		color: #6b7280;
+		margin: 0 0 2rem;
+	}
+
+	.form-actions {
+		display: flex;
+		gap: 0.75rem;
+	}
+
+	.count-badge {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.25rem 0.5rem;
+		background-color: rgb(243 244 246);
+		border-radius: 9999px;
+		font-size: 0.875rem;
+	}
+
+	.title-with-badge {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.header-badge {
+		padding: 0.25rem 0.5rem;
+		background-color: #064b45;
+		color: white;
+		border-radius: 9999px;
+		font-size: 0.75rem;
+	}
+
+	.moim-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-top: 1rem;
+		padding-top: 1rem;
+		border-top: 1px solid #e5e7eb;
+	}
+
+	.action-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.375rem 0.75rem;
+		background: white;
+		border: 1px solid #e5e7eb;
+		border-radius: 9999px;
+		color: #374151;
+		font-size: 0.75rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.action-badge:hover {
+		border-color: #064b45;
+		color: #064b45;
+	}
+
+	.action-badge.warning {
+		background: white;
+		border-color: #e5e7eb;
+		color: #374151;
+	}
+
+	.action-badge.warning:hover {
+		border-color: #ef4444;
+		color: #ef4444;
+		background: white;
+	}
+
+	.action-badge svg {
+		color: currentColor;
+	}
+
+	.delete-confirm-content {
+		padding: 1.5rem;
+		text-align: center;
+	}
+
+	.delete-message {
+		font-size: 1.125rem;
+		color: #111827;
+		margin: 0 0 0.5rem;
+	}
+
+	.delete-description {
+		font-size: 0.875rem;
+		color: #6b7280;
+		margin: 0 0 2rem;
+	}
+
+	.create-form {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
 	}
 
 	.form-group {
@@ -730,129 +954,40 @@
 		gap: 0.5rem;
 	}
 
-	.form-row {
-		display: flex;
-		gap: 1rem;
+	.form-group label {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: #374151;
 	}
 
-	.flex-1 {
-		flex: 1;
+	.form-input {
+		width: 100%;
+		padding: 0.625rem;
+		border: 1px solid #d1d5db;
+		border-radius: 0.5rem;
+		font-size: 0.875rem;
+		color: #111827;
+		transition: all 0.2s;
+	}
+
+	.form-input:focus {
+		outline: none;
+		border-color: #064b45;
+		box-shadow: 0 0 0 2px rgba(6, 75, 69, 0.1);
+	}
+
+	.form-input::placeholder {
+		color: #9ca3af;
+	}
+
+	textarea.form-input {
+		resize: vertical;
+		min-height: 80px;
 	}
 
 	.form-actions {
 		display: flex;
 		gap: 0.75rem;
-		margin-top: 1.5rem;
-	}
-
-	.error-message {
-		padding: 0.75rem;
-		margin-bottom: 1rem;
-		background-color: #fee2e2;
-		border: 1px solid #f87171;
-		border-radius: 0.375rem;
-		color: #991b1b;
-		font-size: 0.875rem;
-	}
-
-	.mannam-cell {
-		background: white;
-		padding: 1rem;
-		border-radius: 0.5rem;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-		margin-bottom: 1rem;
-		cursor: pointer;
-		transition:
-			transform 0.2s,
-			box-shadow 0.2s;
-	}
-
-	.mannam-cell:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-	}
-
-	.mannam-meta {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
 		margin-top: 0.5rem;
-	}
-
-	.status {
-		padding: 0.25rem 0.5rem;
-		border-radius: 9999px;
-		font-size: 0.75rem;
-		font-weight: 500;
-	}
-
-	.status.pending {
-		background-color: #fef3c7;
-		color: #92400e;
-	}
-
-	.status.confirmed {
-		background-color: #d1fae5;
-		color: #065f46;
-	}
-
-	.status.cancelled {
-		background-color: #fee2e2;
-		color: #991b1b;
-	}
-
-	.mannam-title {
-		margin: 0 0 8px 0;
-		font-size: 1.1rem;
-		color: #2d3748;
-	}
-
-	.mannam-description {
-		font-size: 0.9rem;
-		color: #4a5568;
-		margin: 0;
-	}
-
-	.empty-mannams {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: 3rem;
-		background: #fafafa;
-		border-radius: 8px;
-		color: #666;
-	}
-
-	.empty-text {
-		margin: 0 0 16px;
-		font-size: 1rem;
-		color: #718096;
-	}
-
-	.error {
-		color: #e53e3e;
-		text-align: center;
-		padding: 1rem;
-		background: #fff5f5;
-		border-radius: 6px;
-	}
-
-	.not-found {
-		text-align: center;
-		color: #e53e3e;
-		padding: 1rem;
-	}
-
-	.join-description {
-		font-size: 1.125rem;
-		font-weight: 600;
-		color: #1f2937;
-	}
-
-	.join-description-sub {
-		font-size: 0.875rem;
-		color: #6b7280;
-		margin-bottom: 2rem;
 	}
 </style>
