@@ -38,7 +38,7 @@
 			// 1. 로그인 상태 확인
 			const { data: sessionData } = await supabase.auth.getSession();
 			if (!sessionData?.session) {
-				await goto(`/moim/${$page.params.invite_code}/invite`);
+				await goto(`/${$page.params.invite_code}/invite`);
 				return;
 			}
 
@@ -61,7 +61,7 @@
 			const { data: mannamData, error: mannamError } = await supabase
 				.from('mannams')
 				.select('*')
-				.eq('id', $page.params.mannam_id)
+				.eq('sequence_number', $page.params.sequence_number)
 				.eq('moim_id', moim.id)
 				.single();
 			if (mannamError) throw new Error('만남 정보를 불러오는데 실패했습니다.');
@@ -102,23 +102,25 @@
 			if (!timeRange.start || !timeRange.end) throw new Error('시간 범위를 선택해주세요.');
 
 			// 2. 만남 정보 업데이트
+			const updateData = {
+				title,
+				description,
+				start_date: startDate,
+				end_date: endDate,
+				time_range: timeRange,
+				time_slot_minutes: timeSlotMinutes,
+				updated_at: new Date().toISOString()
+			};
 			const { error: updateError } = await supabase
 				.from('mannams')
-				.update({
-					title,
-					description,
-					start_date: startDate,
-					end_date: endDate,
-					time_range: timeRange,
-					time_slot_minutes: timeSlotMinutes,
-					updated_at: new Date().toISOString()
-				})
-				.eq('id', $page.params.mannam_id);
+				.update(updateData)
+				.eq('sequence_number', $page.params.sequence_number)
+				.eq('moim_id', moim.id);
 
 			if (updateError) throw new Error('만남 정보를 수정하는데 실패했습니다.');
 
 			// 3. 만남 상세 페이지로 이동
-			await goto(`/moim/${$page.params.invite_code}/mannams/${$page.params.mannam_id}`);
+			await goto(`/${$page.params.invite_code}/${$page.params.sequence_number}`);
 		} catch (err) {
 			console.error('만남 수정 중 에러 발생:', err);
 			error = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
@@ -156,7 +158,7 @@
 						</svg>
 					</button>
 					<div class="title-with-badge">
-						<span class="header-badge font-regular">만남</span>
+						<span class="header-badge font-regular">수정</span>
 						<h1 class="moim-title font-extrabold">만남 정보 수정</h1>
 					</div>
 				</div>
@@ -260,13 +262,14 @@
 		max-width: 500px;
 		margin: 0 auto;
 		padding: 1rem;
+		padding-top: 0.5rem;
 	}
 
 	.moim-header {
 		position: sticky;
 		top: 0;
 		background: white;
-		padding: 0.5rem 0;
+		padding-bottom: 0.5rem;
 		border-bottom: 1px solid #e5e7eb;
 		margin-bottom: 1.25rem;
 		z-index: 100;
@@ -315,19 +318,6 @@
 
 	.moim-section {
 		margin-bottom: 2rem;
-	}
-
-	.section-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 1.5rem;
-	}
-
-	.section-title {
-		font-size: 1.25rem;
-		color: #111827;
-		margin: 0;
 	}
 
 	.form-group {

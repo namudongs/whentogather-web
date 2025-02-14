@@ -12,6 +12,9 @@
 	import ParticipantAvatar from '$lib/components/ParticipantAvatar.svelte';
 	import Toast from '$lib/components/Toast.svelte';
 	import { user } from '$lib/stores/auth';
+	import { moims, isLoading, error as moimError, createMoim, loadMoims } from '$lib/stores/moim';
+	import { format } from 'date-fns';
+	import { ko } from 'date-fns/locale/ko';
 
 	/*** 페이지 전역 상태 ***/
 	let moim: any = null;
@@ -19,6 +22,9 @@
 	let mannams: any[] = [];
 	let errorMessage = '';
 	let loading = true;
+	let showNameSheet = false;
+	let userName = '';
+	let isUpdatingName = false;
 
 	// 토스트 상태
 	let showToast = false;
@@ -100,6 +106,11 @@
 					return;
 				}
 				$user = sessionData.session.user;
+
+				// 사용자 이름이 없으면 이름 입력 시트 표시
+				if (!$user.user_metadata?.name) {
+					showNameSheet = true;
+				}
 
 				// 초대 페이지에서 왔다면 자동으로 참여
 				const fromInvite = isComingFromInvite();
@@ -280,7 +291,7 @@
 	}
 
 	function goToCreateMannam() {
-		goto(`/moim/${inviteCode}/mannams/create`);
+		goto(`/${$page.params.invite_code}/create`);
 	}
 
 	function openCreateMannamSheet() {
@@ -344,6 +355,41 @@
 				err instanceof Error ? err.message : '참여 처리 중 알 수 없는 오류가 발생했습니다.';
 		}
 	}
+
+	async function handleUpdateName() {
+		if (!userName.trim()) return;
+
+		try {
+			isUpdatingName = true;
+			const { error } = await supabase.auth.updateUser({
+				data: { name: userName.trim() }
+			});
+
+			if (error) throw error;
+
+			// 스토어의 사용자 정보도 업데이트
+			if ($user) {
+				$user = {
+					...$user,
+					user_metadata: {
+						...$user.user_metadata,
+						name: userName.trim()
+					}
+				};
+			}
+
+			showNameSheet = false;
+			toastMessage = '이름이 저장되었습니다';
+			toastType = 'success';
+			showToast = true;
+		} catch (err) {
+			toastMessage = '이름 저장에 실패했습니다';
+			toastType = 'error';
+			showToast = true;
+		} finally {
+			isUpdatingName = false;
+		}
+	}
 </script>
 
 {#if loading}
@@ -360,6 +406,7 @@
 		<div class="moim-content-wrapper">
 			<header class="moim-header">
 				<div class="header-content">
+					<!-- svelte-ignore a11y_consider_explicit_label -->
 					<button class="back-btn font-regular" on:click={goBack}>
 						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -378,7 +425,46 @@
 					<section class="moim-description-section">
 						{#if moim.description}
 							<p class="moim-description font-regular">{moim.description}</p>
+							<div class="meta-divider"></div>
 						{/if}
+						<div class="meta">
+							<div class="info-item">
+								<svg
+									class="info-icon"
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+									/>
+								</svg>
+								<span class="info-text">{format(new Date(moim.created_at), 'PPP p', { locale: ko })} 생성</span>
+							</div>
+							{#if moim.updated_at && new Date(moim.updated_at).getTime() - new Date(moim.created_at).getTime() > 1000}
+								<div class="info-item">
+									<svg
+										class="info-icon"
+										xmlns="http://www.w3.org/2000/svg"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+										/>
+									</svg>
+									<span class="info-text">{format(new Date(moim.updated_at), 'PPP p', { locale: ko })} 수정</span>
+								</div>
+							{/if}
+						</div>
 						<div class="moim-actions">
 							<button class="action-badge font-regular" on:click={copyInviteLink}>
 								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -392,7 +478,7 @@
 									<path d="M12 20h9"></path>
 									<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
 								</svg>
-								모임 정보 수정
+								정보 수정
 							</button>
 							<button class="action-badge warning font-regular" on:click={() => (showDeleteConfirmSheet = true)}>
 								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -400,7 +486,7 @@
 									<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
 									<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
 								</svg>
-								모임 삭제
+								삭제
 							</button>
 						</div>
 					</section>
@@ -464,7 +550,7 @@
 							{#if mannams.length > 0}
 								<div class="mannams-grid">
 									{#each mannams as mannam}
-										<a href="/moim/{inviteCode}/mannams/{mannam.id}" class="mannam-card">
+										<a href="/{inviteCode}/{mannam.sequence_number}" class="mannam-card">
 											<div class="mannam-status-indicator" class:pending={mannam.status === 'pending'} class:confirmed={mannam.status === 'confirmed'}></div>
 											<div class="mannam-content">
 												<h3 class="mannam-title font-bold">{mannam.title}</h3>
@@ -594,6 +680,34 @@
 	</div>
 </BottomSheet>
 
+<BottomSheet show={showNameSheet} onClose={() => {}} title="이름 설정">
+	<form on:submit|preventDefault={handleUpdateName} class="create-form">
+		<div class="form-group">
+			<label for="name" class="font-bold">이름</label>
+			<input
+				id="name"
+				type="text"
+				bind:value={userName}
+				placeholder="이름을 입력해 주세요"
+				class="form-input font-regular"
+			/>
+			<p class="help-text font-regular">다른 사용자에게 표시될 이름입니다.</p>
+		</div>
+		<div class="form-actions">
+			<Button
+				variant="primary"
+				type="submit"
+				disabled={isUpdatingName}
+				loading={isUpdatingName}
+				flex={1}
+				class="font-bold"
+			>
+				저장하기
+			</Button>
+		</div>
+	</form>
+</BottomSheet>
+
 <style>
 	.global-spinner {
 		position: fixed;
@@ -627,13 +741,14 @@
 		max-width: 500px;
 		margin: 0 auto;
 		padding: 1rem;
+		padding-top: 0.5rem;
 	}
 
 	.moim-header {
 		position: sticky;
 		top: 0;
 		background: white;
-		padding: 0.5rem 0;
+		padding-bottom: 0.5rem;
 		border-bottom: 1px solid #e5e7eb;
 		margin-bottom: 1.25rem;
 		z-index: 100;
@@ -674,10 +789,43 @@
 	}
 
 	.moim-description {
-		margin: 0;
+		margin: 0 0 0.75rem;
 		font-size: 0.875rem;
 		line-height: 1.6;
 		color: #374151;
+	}
+
+	.meta-divider {
+		margin: 0 0 1rem;
+		border-bottom: 1px solid #e5e7eb;
+	}
+
+	.meta {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		margin-bottom: 1rem;
+	}
+
+	.info-item {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		color: #6b7280;
+		font-size: 0.875rem;
+	}
+
+	.info-icon {
+		width: 1.25rem;
+		height: 1.25rem;
+	}
+
+	.moim-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		padding-top: 1rem;
+		border-top: 1px solid #e5e7eb;
 	}
 
 	.moim-section {
@@ -697,11 +845,6 @@
 		margin: 0;
 	}
 
-	.participant-count {
-		color: #6b7280;
-		font-size: 0.875rem;
-	}
-
 	.participants-grid {
 		display: flex;
 		flex-wrap: wrap;
@@ -714,26 +857,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
-	}
-
-	.create-mannam-btn {
-		width: 100%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.5rem;
-		padding: 0.75rem;
-		font-size: 0.875rem;
-	}
-
-	.create-mannam-btn svg {
-		width: 1.25rem;
-		height: 1.25rem;
-	}
-
-	.mannam-count {
-		color: #6b7280;
-		font-size: 0.875rem;
 	}
 
 	.mannams-grid {
@@ -881,15 +1004,6 @@
 		font-size: 0.75rem;
 	}
 
-	.moim-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-		margin-top: 1rem;
-		padding-top: 1rem;
-		border-top: 1px solid #e5e7eb;
-	}
-
 	.action-badge {
 		display: inline-flex;
 		align-items: center;
@@ -989,5 +1103,11 @@
 		display: flex;
 		gap: 0.75rem;
 		margin-top: 0.5rem;
+	}
+
+	.help-text {
+		font-size: 0.813rem;
+		color: #6b7280;
+		margin-top: 0.25rem;
 	}
 </style>

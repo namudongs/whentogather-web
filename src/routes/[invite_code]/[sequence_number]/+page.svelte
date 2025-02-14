@@ -23,7 +23,7 @@
 	let myResponse: any = null;
 	let isDeleteSheetOpen = false;
 	let isDeleteConfirmSheetOpen = false;
-	let deleteType: 'cancel' | 'delete' | null = null;
+	let deleteType: 'cancel' | 'delete' | 'activate' | null = null;
 	let timeGridComponent: any;
 	let showAvatars = true;
 
@@ -51,7 +51,7 @@
 			// 1. 로그인 상태 확인
 			const { data: sessionData } = await supabase.auth.getSession();
 			if (!sessionData?.session) {
-				await goto(`/moim/${$page.params.invite_code}/invite`);
+				await goto(`/${$page.params.invite_code}/invite`);
 				return;
 			}
 
@@ -74,7 +74,7 @@
 			const { data: mannamData, error: mannamError } = await supabase
 				.from('mannams')
 				.select('*')
-				.eq('id', $page.params.mannam_id)
+				.eq('sequence_number', $page.params.sequence_number)
 				.eq('moim_id', moim.id)
 				.single();
 			if (mannamError) throw new Error('만남 정보를 불러오는데 실패했습니다.');
@@ -141,26 +141,62 @@
 	}
 
 	async function handleEdit() {
-		await goto(`/moim/${$page.params.invite_code}/mannams/${$page.params.mannam_id}/edit`);
+		await goto(`/${$page.params.invite_code}/${$page.params.sequence_number}/edit`);
 	}
 
 	async function handleDelete() {
 		try {
-			const { error: deleteError } = await supabase
-				.from('mannams')
-				.delete()
-				.eq('id', $page.params.mannam_id);
+			if (deleteType === 'activate') {
+				const { error: updateError } = await supabase
+					.from('mannams')
+					.update({
+						status: 'pending'
+					})
+					.eq('sequence_number', $page.params.sequence_number)
+					.eq('moim_id', moim.id);
 
-			if (deleteError) throw new Error('만남을 삭제하는데 실패했습니다.');
+				if (updateError) {
+					console.error('활성화 에러 상세:', updateError);
+					throw new Error(`만남을 다시 활성화하는데 실패했습니다: ${updateError.message}`);
+				}
+			} else if (deleteType === 'cancel') {
+				const { error: updateError } = await supabase
+					.from('mannams')
+					.update({
+						status: 'cancelled',
+						confirmed_slots: []
+					})
+					.eq('sequence_number', $page.params.sequence_number)
+					.eq('moim_id', moim.id);
 
-			await goto(`/moim/${$page.params.invite_code}`);
+				if (updateError) {
+					console.error('취소 에러 상세:', updateError);
+					throw new Error(`만남을 취소하는데 실패했습니다: ${updateError.message}`);
+				}
+			} else {
+				const { error: deleteError } = await supabase
+					.from('mannams')
+					.delete()
+					.eq('sequence_number', $page.params.sequence_number)
+					.eq('moim_id', moim.id);
+
+				if (deleteError) throw new Error('만남을 삭제하는데 실패했습니다.');
+				
+				// 삭제의 경우에만 모임 목록으로 이동
+				await goto(`/${$page.params.invite_code}`);
+				return;
+			}
+
+			// 취소나 활성화의 경우 현재 페이지 새로고침
+			await loadData();
+			isDeleteConfirmSheetOpen = false;
 		} catch (err) {
-			console.error('만남 삭제 중 에러 발생:', err);
+			console.error(`만남 ${deleteType === 'activate' ? '활성화' : (deleteType === 'cancel' ? '취소' : '삭제')} 중 에러 발생:`, err);
 			error = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
 		}
 	}
 
-	function handleDeleteClick(type: 'cancel' | 'delete') {
+	function handleDeleteClick(type: 'cancel' | 'delete' | 'activate') {
 		deleteType = type;
 		isDeleteSheetOpen = false;
 		isDeleteConfirmSheetOpen = true;
@@ -180,7 +216,7 @@
 		<div class="moim-content-wrapper">
 			<header class="moim-header">
 				<div class="header-content">
-					<button class="back-btn font-regular" on:click={() => goto(`/moim/${$page.params.invite_code}`)}>
+					<button class="back-btn font-regular" on:click={() => goto(`/${$page.params.invite_code}`)}>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							width="24"
@@ -196,7 +232,30 @@
 						</svg>
 					</button>
 					<div class="title-with-badge">
-						<span class="header-badge font-regular">만남</span>
+						<span class="header-badge font-regular" class:confirmed={mannam.status === 'confirmed'} class:cancelled={mannam.status === 'cancelled'}>
+							{#if mannam.status === 'confirmed'}
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M20 6L9 17l-5-5"></path>
+								</svg>
+							{:else if mannam.status === 'cancelled'}
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<line x1="18" y1="6" x2="6" y2="18"></line>
+									<line x1="6" y1="6" x2="18" y2="18"></line>
+								</svg>
+							{:else}
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<circle cx="12" cy="12" r="10"></circle>
+									<polyline points="12 6 12 12 16 14"></polyline>
+								</svg>
+							{/if}
+							{#if mannam.status === 'confirmed'}
+								확정
+							{:else if mannam.status === 'cancelled'}
+								취소
+							{:else}
+								조율 중
+							{/if}
+						</span>
 						<h1 class="moim-title font-extrabold">{mannam.title}</h1>
 					</div>
 				</div>
@@ -207,6 +266,7 @@
 				<section class="moim-description-section">
 					{#if mannam.description}
 						<p class="moim-description font-regular">{mannam.description}</p>
+						<div class="meta-divider"></div>
 					{/if}
 					<div class="meta">
 						<div class="info-item">
@@ -246,6 +306,26 @@
 									'21:00'}</span
 							>
 						</div>
+						{#if mannam.status === 'confirmed' && mannam.confirmed_slots?.length > 0}
+							<div class="info-item confirmed">
+								<svg
+									class="info-icon"
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+								</svg>
+								<span class="info-text">
+									확정 시간: {format(new Date(mannam.confirmed_slots[0].date), 'M.d (E)', { locale: ko })} {mannam.confirmed_slots[0].slot}
+									{#if mannam.confirmed_slots.length > 1}
+										~ {format(new Date(mannam.confirmed_slots[mannam.confirmed_slots.length - 1].date), 'M.d (E)', { locale: ko })} {mannam.confirmed_slots[mannam.confirmed_slots.length - 1].slot}
+									{/if}
+								</span>
+							</div>
+						{/if}
 					</div>
 					{#if isCreator}
 						<div class="badge-buttons">
@@ -254,14 +334,14 @@
 									<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
 									<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
 								</svg>
-								만남 정보 수정
+							    정보 수정
 							</button>
 							{#if responses.length > 0}
-								<button class="badge-button confirm" on:click={() => goto(`/moim/${$page.params.invite_code}/mannams/${$page.params.mannam_id}/confirm`)}>
+								<button class="badge-button confirm" on:click={() => goto(`/${$page.params.invite_code}/${$page.params.sequence_number}/confirm`)}>
 									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-										<path d="M20 6L9 17l-5-5"></path>
+										<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
 									</svg>
-									시간 확정하기
+									{mannam.status === 'confirmed' ? '확정 시간 변경' : '시간 확정'}
 								</button>
 							{/if}
 							<button class="badge-button delete" on:click={() => isDeleteSheetOpen = true}>
@@ -269,7 +349,7 @@
 									<path d="M3 6h18"></path>
 									<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
 								</svg>
-								만남 취소
+								{mannam.status === 'cancelled' ? '관리' : '관리'}
 							</button>
 						</div>
 					{/if}
@@ -307,7 +387,7 @@
 						type="button"
 						class="create-btn font-bold"
 						class:responded={myResponse}
-						on:click={() => goto(`/moim/${$page.params.invite_code}/mannams/${$page.params.mannam_id}/respond`)}
+						on:click={() => goto(`/${$page.params.invite_code}/${$page.params.sequence_number}/respond`)}
 					>
 						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -380,17 +460,6 @@
 								{/if}
 							{/each}
 						</div>
-					{:else}
-						<div class="empty-state">
-							<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-								<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-								<circle cx="9" cy="7" r="4"></circle>
-								<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-								<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-							</svg>
-							<p class="font-regular">아직 응답이 없습니다</p>
-							<p class="subtitle font-light">첫 번째로 응답해보세요</p>
-						</div>
 					{/if}
 				</section>
 			</main>
@@ -401,22 +470,37 @@
 	<BottomSheet
 		show={isDeleteSheetOpen}
 		onClose={() => isDeleteSheetOpen = false}
-		title="만남 취소"
+		title="만남 관리"
 	>
 		<div class="sheet-content">
-			<button class="sheet-button" on:click={() => handleDeleteClick('cancel')}>
-				<div class="sheet-button-content">
-					<div class="sheet-button-title">만남 취소하기</div>
-					<div class="sheet-button-description">만남을 취소하고 모든 참여자의 응답을 삭제합니다.</div>
-				</div>
-				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<path d="M9 18l6-6-6-6"></path>
-				</svg>
-			</button>
+			{#if mannam.status === 'cancelled'}
+				<button class="sheet-button" on:click={() => handleDeleteClick('activate')}>
+					<div class="sheet-button-content">
+						<div class="sheet-button-title">만남 다시 활성화하기</div>
+						<div class="sheet-button-description">취소된 만남을 다시 활성화합니다.
+참가자들이 다시 응답할 수 있습니다.</div>
+					</div>
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M9 18l6-6-6-6"></path>
+					</svg>
+				</button>
+			{:else}
+				<button class="sheet-button" on:click={() => handleDeleteClick('cancel')}>
+					<div class="sheet-button-content">
+						<div class="sheet-button-title">만남 취소하기</div>
+						<div class="sheet-button-description">만남을 취소 상태로 변경합니다.
+나중에 다시 활성화할 수 있습니다.</div>
+					</div>
+					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M9 18l6-6-6-6"></path>
+					</svg>
+				</button>
+			{/if}
 			<button class="sheet-button delete" on:click={() => handleDeleteClick('delete')}>
 				<div class="sheet-button-content">
 					<div class="sheet-button-title">만남 삭제하기</div>
-					<div class="sheet-button-description">만남을 영구적으로 삭제합니다.</div>
+					<div class="sheet-button-description">만남을 영구적으로 삭제합니다.
+이 작업은 되돌릴 수 없습니다.</div>
 				</div>
 				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<path d="M9 18l6-6-6-6"></path>
@@ -429,14 +513,18 @@
 	<BottomSheet
 		show={isDeleteConfirmSheetOpen}
 		onClose={() => isDeleteConfirmSheetOpen = false}
-		title={deleteType === 'cancel' ? '만남을 취소하시겠습니까?' : '만남을 삭제하시겠습니까?'}
+		title={deleteType === 'activate' ? '만남을 다시 활성화하시겠습니까?' : (deleteType === 'cancel' ? '만남을 취소하시겠습니까?' : '만남을 삭제하시겠습니까?')}
 	>
 		<div class="sheet-content">
 			<div class="sheet-description">
-				{#if deleteType === 'cancel'}
-					만남을 취소하면 모든 참여자의 응답이 삭제되며, 이 작업은 되돌릴 수 없습니다.
+				{#if deleteType === 'activate'}
+					만남을 다시 활성화하면 참가자들이 다시 응답할 수 있습니다.
+				{:else if deleteType === 'cancel'}
+					만남을 취소하면 취소 상태로 변경되며,
+나중에 다시 활성화할 수 있습니다.
 				{:else}
-					만남을 삭제하면 모든 데이터가 영구적으로 삭제되며, 이 작업은 되돌릴 수 없습니다.
+					만남을 삭제하면 모든 데이터가 영구적으로 삭제되며,
+이 작업은 되돌릴 수 없습니다.
 				{/if}
 			</div>
 			<div class="sheet-buttons">
@@ -444,7 +532,7 @@
 					취소
 				</button>
 				<button class="sheet-button delete" on:click={handleDelete}>
-					{deleteType === 'cancel' ? '만남 취소하기' : '만남 삭제하기'}
+					{deleteType === 'activate' ? '다시 활성화하기' : (deleteType === 'cancel' ? '만남 취소하기' : '만남 삭제하기')}
 				</button>
 			</div>
 		</div>
@@ -489,13 +577,14 @@
 		max-width: 500px;
 		margin: 0 auto;
 		padding: 1rem;
+		padding-top: 0.5rem;
 	}
 
 	.moim-header {
 		position: sticky;
 		top: 0;
 		background: white;
-		padding: 0.5rem 0;
+		padding-bottom: 0.5rem;
 		border-bottom: 1px solid #e5e7eb;
 		margin-bottom: 1.25rem;
 		z-index: 100;
@@ -536,10 +625,30 @@
 
 	.header-badge {
 		padding: 0.25rem 0.5rem;
-		background-color: #064b45;
-		color: white;
 		border-radius: 9999px;
 		font-size: 0.75rem;
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		transition: all 0.2s ease;
+		background-color: rgba(251, 146, 60, 0.15);
+		color: rgb(194, 65, 12);
+	}
+
+	.header-badge svg {
+		width: 14px;
+		height: 14px;
+		color: currentColor;
+	}
+
+	.header-badge.confirmed {
+		background-color: rgba(74, 222, 128, 0.15);
+		color: rgb(22, 101, 52);
+	}
+
+	.header-badge.cancelled {
+		background-color: rgba(248, 113, 113, 0.15);
+		color: rgb(153, 27, 27);
 	}
 
 	.moim-description-section {
@@ -550,19 +659,22 @@
 	}
 
 	.moim-description {
-		margin: 0;
+		margin: 0 0 0.75rem;
 		font-size: 0.875rem;
 		line-height: 1.6;
 		color: #374151;
+	}
+
+	.meta-divider {
+		margin: 0 0 1rem;
+		border-bottom: 1px solid #e5e7eb;
 	}
 
 	.meta {
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
-		margin-top: 1rem;
-		padding-top: 1rem;
-		border-top: 1px solid #e5e7eb;
+		margin-bottom: 1rem;
 	}
 
 	.info-item {
@@ -638,34 +750,6 @@
 		color: #6b7280;
 	}
 
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: 3rem;
-		background: #f8fafc;
-		border-radius: 0.75rem;
-		color: #374151;
-		text-align: center;
-	}
-
-	.empty-state svg {
-		color: #9ca3af;
-		margin-bottom: 1rem;
-	}
-
-	.empty-state p {
-		margin: 0;
-		font-size: 0.875rem;
-	}
-
-	.empty-state .subtitle {
-		font-size: 0.875rem;
-		color: #6b7280;
-		margin-top: 0.25rem;
-	}
-
 	.response-button-section {
 		margin-bottom: 2rem;
 	}
@@ -718,7 +802,6 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;
-		margin-top: 1rem;
 		padding-top: 1rem;
 		border-top: 1px solid #e5e7eb;
 	}
@@ -832,6 +915,7 @@
 	.sheet-button-description {
 		font-size: 0.875rem;
 		color: #6b7280;
+		white-space: pre-line;
 	}
 
 	.sheet-description {
@@ -842,6 +926,7 @@
 		font-size: 0.875rem;
 		color: #6b7280;
 		line-height: 1.5;
+		white-space: pre-line;
 	}
 
 	.sheet-buttons {
@@ -912,5 +997,30 @@
 
 	.avatar-toggle-btn svg {
 		color: currentColor;
+	}
+
+	.status-badge {
+		padding: 0.25rem 0.5rem;
+		border-radius: 9999px;
+		font-size: 0.75rem;
+		margin-left: 0.5rem;
+	}
+
+	.status-badge.cancelled {
+		background-color: #fee2e2;
+		color: #ef4444;
+	}
+
+	.status-badge.confirmed {
+		background-color: #dcfce7;
+		color: #16a34a;
+	}
+
+	.info-item.confirmed {
+		color: #16a34a;
+	}
+
+	.info-item.confirmed .info-icon {
+		color: #16a34a;
 	}
 </style>

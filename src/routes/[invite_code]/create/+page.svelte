@@ -29,7 +29,7 @@
 			// 1) 로그인 상태 확인
 			const { data: sessionData } = await supabase.auth.getSession();
 			if (!sessionData?.session) {
-				await goto(`/moim/${$page.params.invite_code}/invite`);
+				await goto(`/${$page.params.invite_code}/invite`);
 				return;
 			}
 
@@ -87,11 +87,22 @@
 					time_slot_minutes: mannamTimeSlotMinutes,
 					status: 'pending'
 				})
-				.select()
+				.select('*, moims!inner(invite_code)')
 				.single();
 
 			if (err) throw err;
-			await goto(`/moim/${$page.params.invite_code}/mannams/${mannam.id}`, { replaceState: true });
+			
+			// sequence_number를 가져오기 위한 추가 쿼리
+			const { data: createdMannam, error: seqErr } = await supabase
+				.from('mannams')
+				.select('sequence_number')
+				.eq('id', mannam.id)
+				.single();
+			
+			if (seqErr) throw seqErr;
+			
+			// 새로운 URL 구조로 리다이렉트
+			await goto(`/${$page.params.invite_code}/${createdMannam.sequence_number}`, { replaceState: true });
 		} catch (err) {
 			mannamError = err instanceof Error ? err.message : '만남을 생성하는 중에 오류가 발생했습니다.';
 		}
@@ -233,13 +244,14 @@
 		max-width: 500px;
 		margin: 0 auto;
 		padding: 1rem;
+		padding-top: 0.5rem;
 	}
 
 	.moim-header {
 		position: sticky;
 		top: 0;
 		background: white;
-		padding: 0.5rem 0;
+		padding-bottom: 0.5rem;
 		border-bottom: 1px solid #e5e7eb;
 		margin-bottom: 1.25rem;
 		z-index: 100;

@@ -46,23 +46,45 @@ CREATE TABLE public.mannams (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   moim_id uuid REFERENCES public.moims ON DELETE CASCADE NOT NULL,
   creator_id uuid REFERENCES auth.users NOT NULL,
+  sequence_number INTEGER NOT NULL,  -- 모임 내 순차 번호
   title TEXT NOT NULL,
   description TEXT,
   start_date DATE NOT NULL,  -- 만남 후보 기간 시작일
   end_date DATE NOT NULL,    -- 만남 후보 기간 종료일
   time_range JSONB NOT NULL DEFAULT '{"start": "09:00", "end": "21:00"}'::jsonb,  -- 시간 범위 (기본값: 오전 9시 ~ 오후 9시)
   time_slot_minutes INTEGER NOT NULL DEFAULT 30,  -- 시간 슬롯 단위 (기본값: 30분)
-  confirmed_date DATE,       -- 확정된 날짜
-  confirmed_time TIME,       -- 확정된 시간
+  confirmed_slots JSONB DEFAULT '[]'::jsonb,  -- 확정된 시간 슬롯들 (예: [{"date": "2024-03-01", "slot": "18:00"}])
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending','confirmed','cancelled')),
   created_at timestamptz DEFAULT now() NOT NULL,
   updated_at timestamptz DEFAULT now() NOT NULL,
   CONSTRAINT valid_date_range CHECK (start_date <= end_date),
   CONSTRAINT valid_confirmation CHECK (
-    (status = 'confirmed' AND confirmed_date IS NOT NULL AND confirmed_time IS NOT NULL) OR
-    (status != 'confirmed' AND confirmed_date IS NULL AND confirmed_time IS NULL)
-  )
+    (status = 'confirmed' AND jsonb_array_length(confirmed_slots) > 0) OR
+    (status != 'confirmed' AND jsonb_array_length(confirmed_slots) = 0)
+  ),
+  UNIQUE(moim_id, sequence_number)  -- 모임 내에서 순차 번호는 유일해야 함
 );
+
+-- 만남 순차 번호 자동 생성 함수
+CREATE OR REPLACE FUNCTION public.generate_mannam_sequence_number()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- 해당 모임의 가장 큰 sequence_number를 찾아서 +1
+  SELECT COALESCE(MAX(sequence_number), 0) + 1
+  INTO NEW.sequence_number
+  FROM public.mannams
+  WHERE moim_id = NEW.moim_id;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 만남 생성 시 순차 번호 자동 생성 트리거
+DROP TRIGGER IF EXISTS set_mannam_sequence_number ON public.mannams;
+CREATE TRIGGER set_mannam_sequence_number
+  BEFORE INSERT ON public.mannams
+  FOR EACH ROW
+  EXECUTE FUNCTION public.generate_mannam_sequence_number();
 
 /* 만남 응답(Mannam Responses) 테이블 */
 CREATE TABLE public.mannam_responses (

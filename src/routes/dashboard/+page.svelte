@@ -7,14 +7,25 @@
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 	import BottomSheet from '$lib/components/BottomSheet.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import ParticipantAvatar from '$lib/components/ParticipantAvatar.svelte';
 	import { user, logout, isLoading as authLoading } from '$lib/stores/auth';
 	import { moims, isLoading, error as moimError, createMoim, loadMoims } from '$lib/stores/moim';
+	import { supabase } from '$lib/supabaseClient';
+	import Toast from '$lib/components/Toast.svelte';
 
 	// 모달 상태
 	let isModalOpen = false;
 	let isCreating = false;
 	let title = '';
 	let description = '';
+	let showNameSheet = false;
+	let userName = '';
+	let isUpdatingName = false;
+
+	// 토스트 상태
+	let showToast = false;
+	let toastMessage = '';
+	let toastType: 'success' | 'error' | 'info' = 'success';
 
 	let unsubscribe: () => void;
 
@@ -22,6 +33,10 @@
 		// 사용자 상태 구독
 		unsubscribe = user.subscribe(async ($user) => {
 			if ($user) {
+				// 사용자 이름이 없으면 이름 입력 시트 표시
+				if (!$user.user_metadata?.name) {
+					showNameSheet = true;
+				}
 				try {
 					await loadMoims();
 				} catch (error) {
@@ -61,18 +76,50 @@
 			const newMoim = await createMoim(title, description);
 			isCreating = false;
 			closeModal();
-			// 생성된 모임 페이지로 이동
-			goto(`/moim/${newMoim.invite_code}`);
+			// 생성된 모임 페이지로 이동 (URL 구조 변경)
+			goto(`/${newMoim.invite_code}`);
 		} catch (error) {
 			isCreating = false;
 			// 에러는 이미 moimError 스토어에 저장됨
 		}
 	}
 
-	// 모임 셀 클릭 시, 모임 상세 페이지로 이동하는 함수 (UUID 대신 초대 코드 사용)
+	// 모임 셀 클릭 시, 모임 상세 페이지로 이동하는 함수 (URL 구조 변경)
 	function goToMeetingDetail(meeting: any) {
-		// 모임 데이터에 invite_code가 있다고 가정합니다.
-		goto(`/moim/${meeting.invite_code}`);
+		goto(`/${meeting.invite_code}`);
+	}
+
+	async function handleUpdateName() {
+		if (!userName.trim() || !$user) return;
+
+		try {
+			isUpdatingName = true;
+			const { error } = await supabase.auth.updateUser({
+				data: { name: userName.trim() }
+			});
+
+			if (error) throw error;
+
+			// 스토어의 사용자 정보도 업데이트
+			$user = {
+				...$user,
+				user_metadata: {
+					...$user.user_metadata,
+					name: userName.trim()
+				}
+			} as typeof $user;
+
+			showNameSheet = false;
+			toastMessage = '이름이 저장되었습니다';
+			toastType = 'success';
+			showToast = true;
+		} catch (err) {
+			toastMessage = '이름 저장에 실패했습니다';
+			toastType = 'error';
+			showToast = true;
+		} finally {
+			isUpdatingName = false;
+		}
 	}
 </script>
 
@@ -89,11 +136,8 @@
 		<div class="dashboard-content-wrapper">
 			<header class="dashboard-header">
 				<div class="header-content">
-					<div class="user-info">
-						<h1 class="font-extrabold">안녕하세요</h1>
-						<p class="user-name font-regular">
-							{$user?.user_metadata?.name || $user?.email?.split('@')[0] || ''}님
-						</p>
+					<div class="logo-container">
+						<Logo />
 					</div>
 					<button class="sign-out-btn font-regular" on:click={handleSignOut}>
 						<svg
@@ -117,28 +161,53 @@
 			</header>
 
 			<main class="dashboard-content">
-				<section class="quick-actions">
-					<Button variant="primary" on:click={openCreateModal} class="font-bold">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							width="20"
-							height="20"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						>
-							<line x1="12" y1="5" x2="12" y2="19"></line>
-							<line x1="5" y1="12" x2="19" y2="12"></line>
-						</svg>
-						새로운 모임 만들기
-					</Button>
+				<section class="welcome-section">
+					<div class="welcome-content">
+						<div class="avatar">
+							<img
+								src={`https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent($user?.user_metadata?.name || $user?.email?.split('@')[0] || '')}&backgroundColor=b6e3d4`}
+								alt="프로필 아바타"
+							/>
+						</div>
+						<div class="welcome-text">
+							<span class="greeting-label font-regular">환영합니다</span>
+							<h1 class="user-name font-bold">
+								안녕하세요, {$user?.user_metadata?.name || $user?.email?.split('@')[0] || ''}님
+							</h1>
+						</div>
+					</div>
 				</section>
 
 				<section class="meetings-section">
-					<h2 class="font-bold">내 모임</h2>
+					<div class="title-with-badge">
+						<h2 class="font-bold">내 모임</h2>
+						<div class="count-badge font-regular">
+							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+							</svg>
+							{$moims?.length || 0}개
+						</div>
+					</div>
+					<section class="quick-actions">
+						<Button variant="primary" on:click={openCreateModal} class="font-bold">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="20"
+								height="20"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<line x1="12" y1="5" x2="12" y2="19"></line>
+								<line x1="5" y1="12" x2="19" y2="12"></line>
+							</svg>
+							새로운 모임 만들기
+						</Button>
+					</section>
+
 					{#if $moimError}
 						<ErrorMessage message={$moimError} />
 					{:else if $moims && $moims.length > 0}
@@ -268,6 +337,36 @@
 	</form>
 </BottomSheet>
 
+{#if showNameSheet}
+	<BottomSheet show={showNameSheet} onClose={() => {}} title="이름 설정">
+		<form on:submit|preventDefault={handleUpdateName} class="create-form">
+			<div class="form-group">
+				<label for="name" class="font-bold">이름</label>
+				<input
+					id="name"
+					type="text"
+					bind:value={userName}
+					placeholder="이름을 입력해 주세요"
+					class="form-input font-regular"
+				/>
+				<p class="help-text font-regular">다른 사용자에게 표시될 이름입니다.</p>
+			</div>
+			<div class="form-actions">
+				<Button
+					variant="primary"
+					type="submit"
+					disabled={isUpdatingName}
+					loading={isUpdatingName}
+					flex={1}
+					class="font-bold"
+				>
+					저장하기
+				</Button>
+			</div>
+		</form>
+	</BottomSheet>
+{/if}
+
 <style>
 	:global(body) {
 		margin: 0;
@@ -298,15 +397,16 @@
 		max-width: 500px;
 		margin: 0 auto;
 		padding: 1rem;
+		padding-top: 0.5rem;
 	}
 
 	.dashboard-header {
 		position: sticky;
 		top: 0;
 		background: white;
-		padding: 0.75rem 0;
+		padding-bottom: 0.5rem;
 		border-bottom: 1px solid #e5e7eb;
-		margin-bottom: 1.5rem;
+		margin-bottom: 1.25rem;
 		z-index: 100;
 	}
 
@@ -319,46 +419,125 @@
 		padding: 0 0.5rem;
 	}
 
-	.user-info h1 {
-		margin: 0;
-		font-size: 1.25rem;
-		font-weight: 600;
-		color: #111827;
+	.logo-container {
+		margin-right: 1rem;
 	}
 
-	.user-info .user-name {
-		margin: 0.25rem 0 0;
-		color: #374151;
+	.user-profile {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.375rem;
+		padding-right: 0.75rem;
+		background: white;
+		border: 1px solid #e5e7eb;
+		border-radius: 2rem;
+		margin-bottom: 1.5rem;
+		transition: all 0.2s ease;
+	}
+
+	.user-profile:hover {
+		border-color: #064b45;
+		box-shadow: 0 0 0 1px rgba(6, 75, 69, 0.1);
+	}
+
+	.avatar {
+		width: 1.75rem;
+		height: 1.75rem;
+		border-radius: 50%;
+		overflow: hidden;
+		background: #f3f4f6;
+	}
+
+	.avatar img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.greeting {
 		font-size: 0.875rem;
+		color: #374151;
 	}
 
 	.sign-out-btn {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		padding: 0.5rem 1rem;
+		padding: 0.5rem 0.75rem;
 		color: #064b45;
-		background: none;
-		border: none;
+		background: white;
+		border: 1px solid #e5e7eb;
 		font-size: 0.875rem;
 		cursor: pointer;
-		transition: color 0.15s ease;
+		transition: all 0.2s ease;
+		border-radius: 2rem;
 	}
 
 	.sign-out-btn:hover {
 		color: #043430;
+		background: rgba(6, 75, 69, 0.02);
+		border-color: #064b45;
+		box-shadow: 0 0 0 1px rgba(6, 75, 69, 0.1);
 	}
 
 	.dashboard-content {
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
-		padding: 0 0.5rem;
+		padding: 1.5rem 0.5rem 0.5rem;
+	}
+
+	.welcome-section {
+		margin-bottom: 1em;
+		padding: 1.5rem;
+		background: #f8fafc;
+		border-radius: 1rem;
+		border: 1px solid #e5e7eb;
+	}
+
+	.welcome-content {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.avatar {
+		width: 3rem;
+		height: 3rem;
+		border-radius: 50%;
+		overflow: hidden;
+		background: white;
+		border: 2px solid #e5e7eb;
+	}
+
+	.avatar img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.welcome-text {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.greeting-label {
+		font-size: 0.875rem;
+		color: #6b7280;
+	}
+
+	.user-name {
+		margin: 0;
+		font-size: 1.25rem;
+		color: #111827;
+		line-height: 1.25;
 	}
 
 	.quick-actions {
 		display: grid;
 		gap: 1rem;
+		margin-bottom: 1rem;
 	}
 
 	.meetings-section {
@@ -368,8 +547,26 @@
 	.meetings-section h2 {
 		font-size: 1.25rem;
 		font-weight: 600;
-		margin-bottom: 1.5rem;
+		margin: 0;
 		color: #111827;
+	}
+
+	.title-with-badge {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 1.5rem;
+	}
+
+	.count-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.25rem 0.5rem;
+		background-color: rgb(243 244 246);
+		border-radius: 9999px;
+		font-size: 0.875rem;
+		line-height: 1;
 	}
 
 	.meetings-list {
@@ -530,5 +727,11 @@
 		display: flex;
 		gap: 0.75rem;
 		margin-top: 0.5rem;
+	}
+
+	.help-text {
+		font-size: 0.813rem;
+		color: #6b7280;
+		margin-top: 0.25rem;
 	}
 </style>

@@ -37,7 +37,7 @@
 			// 1. 로그인 상태 확인
 			const { data: sessionData } = await supabase.auth.getSession();
 			if (!sessionData?.session) {
-				await goto(`/moim/${$page.params.invite_code}/invite`);
+				await goto(`/${$page.params.invite_code}/invite`);
 				return;
 			}
 
@@ -60,7 +60,7 @@
 			const { data: mannamData, error: mannamError } = await supabase
 				.from('mannams')
 				.select('*')
-				.eq('id', $page.params.mannam_id)
+				.eq('sequence_number', $page.params.sequence_number)
 				.eq('moim_id', moim.id)
 				.single();
 			if (mannamError) throw new Error('만남 정보를 불러오는데 실패했습니다.');
@@ -130,18 +130,28 @@
 				return;
 			}
 
-			const { error: updateError } = await supabase
+			const updateData = {
+				confirmed_slots: selectedSlots,
+				status: 'confirmed'
+			};
+
+			const { data, error: updateError } = await supabase
 				.from('mannams')
-				.update({
-					confirmed_slots: selectedSlots,
-					status: 'confirmed',
-					updated_at: new Date().toISOString()
-				})
-				.eq('id', $page.params.mannam_id);
+				.update(updateData)
+				.eq('sequence_number', $page.params.sequence_number)
+				.eq('moim_id', moim.id)
+				.select();
 
-			if (updateError) throw new Error('시간 확정에 실패했습니다.');
+			if (updateError) {
+				console.error('업데이트 에러:', updateError);
+				throw new Error('시간 확정에 실패했습니다: ' + updateError.message);
+			}
 
-			await goto(`/moim/${$page.params.invite_code}/mannams/${$page.params.mannam_id}`);
+			if (!data || data.length === 0) {
+				throw new Error('업데이트할 만남을 찾을 수 없습니다.');
+			}
+
+			await goto(`/${$page.params.invite_code}/${$page.params.sequence_number}`);
 		} catch (err) {
 			console.error('시간 확정 중 에러 발생:', err);
 			error = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
@@ -206,6 +216,7 @@
 							readOnly={false}
 							on:change={handleSlotsChange}
 							{selectedSlots}
+							confirmedSlots={mannam.confirmed_date && mannam.confirmed_time ? [{ date: mannam.confirmed_date, slot: mannam.confirmed_time }] : []}
 							responses={responses.map(response => ({
 								user: response.user,
 								available_slots: Array.isArray(response.available_slots)
@@ -241,7 +252,7 @@
 	>
 		<div class="sheet-content">
 			<div class="sheet-description">
-				선택한 시간대로 만남 시간이 확정되며, 모든 참여자에게 알림이 전송됩니다.
+				선택한 시간대로 만남 시간이 확정됩니다.
 			</div>
 			<div class="sheet-buttons">
 				<button class="sheet-button cancel" on:click={() => isConfirmSheetOpen = false}>
@@ -280,13 +291,14 @@
 		max-width: 500px;
 		margin: 0 auto;
 		padding: 1rem;
+		padding-top: 0.5rem;
 	}
 
 	.moim-header {
 		position: sticky;
 		top: 0;
 		background: white;
-		padding: 0.5rem 0;
+		padding-bottom: 0.5rem;
 		border-bottom: 1px solid #e5e7eb;
 		margin-bottom: 1.25rem;
 		z-index: 100;

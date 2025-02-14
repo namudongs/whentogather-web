@@ -182,9 +182,7 @@
 
   function getHeatmapColor(count: number): string {
     if (count === 0) return '';
-    // 20명을 최대값으로 설정하고, 실제 최대값이 20명 이하일 경우 그 값을 사용
     const maxCount = Math.min(20, Math.max(...Object.values(heatmapData)));
-    // 0.1부터 0.8까지 단계적으로 증가하도록 설정
     const alpha = 0.1 + (count / maxCount) * 0.7;
     return `background-color: rgba(6, 75, 69, ${alpha})`;
   }
@@ -253,7 +251,11 @@
             data-slot={slot}
             title={count > 0 ? getRespondentsText(respondents) : ''}
           >
-            {#if count > 0 && showAvatars}
+            {#if isConfirmed}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            {:else if count > 0 && showAvatars}
               <div class="respondents-stack">
                 {#each respondents.slice(0, 20) as respondent, i}
                   <div 
@@ -379,7 +381,17 @@
 
   .time-slot.confirmed {
     background-color: #064b45 !important;
-    border: 2px solid #053c37;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+  }
+
+  .time-slot.confirmed svg {
+    width: 1.2rem;
+    height: 1.2rem;
+    color: white;
+    stroke-width: 2;
   }
 
   .time-slot.has-responses {

@@ -40,7 +40,7 @@
 			// 1. 로그인 상태 확인
 			const { data: sessionData } = await supabase.auth.getSession();
 			if (!sessionData?.session) {
-				await goto(`/moim/${$page.params.invite_code}/invite`);
+				await goto(`/${$page.params.invite_code}/invite`);
 				return;
 			}
 
@@ -63,7 +63,7 @@
 			const { data: mannamData, error: mannamError } = await supabase
 				.from('mannams')
 				.select('*')
-				.eq('id', $page.params.mannam_id)
+				.eq('sequence_number', $page.params.sequence_number)
 				.eq('moim_id', moim.id)
 				.single();
 			if (mannamError) throw new Error('만남 정보를 불러오는데 실패했습니다.');
@@ -143,7 +143,7 @@
 			}
 
 			// 만남 상세 페이지로 이동
-			await goto(`/moim/${$page.params.invite_code}/mannams/${$page.params.mannam_id}`);
+			await goto(`/${$page.params.invite_code}/${$page.params.sequence_number}`);
 		} catch (err) {
 			console.error('응답 제출 중 에러 발생:', err);
 			error = err instanceof Error ? err.message : '응답을 제출하는 중에 오류가 발생했습니다.';
@@ -300,13 +300,14 @@
 		max-width: 500px;
 		margin: 0 auto;
 		padding: 1rem;
+		padding-top: 0.5rem;
 	}
 
 	.moim-header {
 		position: sticky;
 		top: 0;
 		background: white;
-		padding: 0.5rem 0;
+		padding-bottom: 0.5rem;
 		border-bottom: 1px solid #e5e7eb;
 		margin-bottom: 1.25rem;
 		z-index: 100;

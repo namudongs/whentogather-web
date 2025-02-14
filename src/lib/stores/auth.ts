@@ -39,7 +39,11 @@ export const loginWithSocial = async (provider: 'google' | 'kakao' | 'apple') =>
       provider,
       options: {
         redirectTo: window.location.origin + '/dashboard',
-        skipBrowserRedirect: false
+        skipBrowserRedirect: false,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent'
+        }
       }
     });
     if (error) throw error;
