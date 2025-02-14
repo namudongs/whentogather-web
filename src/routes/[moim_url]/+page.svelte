@@ -27,6 +27,7 @@
 	let showNameSheet = false;
 	let userName = '';
 	let isUpdatingName = false;
+	let profile: any = null;
 
 	// 토스트 상태
 	let showToast = false;
@@ -164,7 +165,7 @@
 					const userIds = updatedPartsData.map((p: any) => p.user_id);
 					const { data: profilesData, error: profilesError } = await supabase
 						.from('profiles')
-						.select('id, name')
+						.select('id, name, email, avatar_url')
 						.in('id', userIds);
 					if (profilesError) {
 						errorMessage = `참여자의 프로필 정보를 불러오는 중에 에러가 발생했습니다: ${
@@ -225,6 +226,7 @@
 		};
 
 		initializePage();
+		loadProfile();
 	});
 
 	// 컴포넌트 언마운트 시 구독 해제
@@ -372,9 +374,15 @@
 		try {
 			isUpdatingName = true;
 
+			// 새로운 아바타 URL 생성
+			const newAvatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(userName.trim())}&backgroundColor=b6e3d4`;
+
 			// 1. Auth 메타데이터 업데이트
 			const { error: authError } = await supabase.auth.updateUser({
-				data: { name: userName.trim() }
+				data: { 
+					name: userName.trim(),
+					avatar_url: newAvatarUrl
+				}
 			});
 
 			if (authError) throw authError;
@@ -382,7 +390,10 @@
 			// 2. 프로필 테이블 업데이트
 			const { error: profileError } = await supabase
 				.from('profiles')
-				.update({ name: userName.trim() })
+				.update({ 
+					name: userName.trim(),
+					avatar_url: newAvatarUrl
+				})
 				.eq('id', $user.id);
 
 			if (profileError) throw profileError;
@@ -392,7 +403,8 @@
 				...$user,
 				user_metadata: {
 					...$user.user_metadata,
-					name: userName.trim()
+					name: userName.trim(),
+					avatar_url: newAvatarUrl
 				}
 			} as typeof $user;
 
@@ -407,6 +419,50 @@
 			showToast = true;
 		} finally {
 			isUpdatingName = false;
+		}
+	}
+
+	async function loadProfile() {
+		if (!$user) return;
+		
+		const { data, error } = await supabase
+			.from('profiles')
+			.select('*')
+			.eq('id', $user.id)
+			.single();
+			
+		if (!error && data) {
+			profile = data;
+
+			// 아바타 URL이 없거나 DiceBear API 기반이 아닌 경우 업데이트
+			const isDiceBearUrl = (url?: string) => url?.includes('api.dicebear.com') ?? false;
+			const createDiceBearUrl = (name: string) => 
+				`https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3d4`;
+
+			if (!isDiceBearUrl(data.avatar_url)) {
+				const newAvatarUrl = createDiceBearUrl(data.name || $user.email?.split('@')[0] || '');
+
+				// Auth 메타데이터 업데이트
+				await supabase.auth.updateUser({
+					data: { avatar_url: newAvatarUrl }
+				});
+
+				// 프로필 테이블 업데이트
+				await supabase
+					.from('profiles')
+					.update({ avatar_url: newAvatarUrl })
+					.eq('id', $user.id);
+
+				// 로컬 상태 업데이트
+				profile.avatar_url = newAvatarUrl;
+				$user = {
+					...$user,
+					user_metadata: {
+						...$user.user_metadata,
+						avatar_url: newAvatarUrl
+					}
+				} as typeof $user;
+			}
 		}
 	}
 
@@ -539,6 +595,8 @@
 								<ParticipantAvatar
 									name={participant.profile?.name || '이름없음'}
 									role={participant.role}
+									avatarUrl={participant.profile?.avatar_url}
+									email={participant.profile?.email}
 								/>
 							{/each}
 						</div>

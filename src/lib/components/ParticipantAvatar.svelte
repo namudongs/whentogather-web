@@ -2,14 +2,26 @@
   export let name: string = '이름없음';
   export let role: string = 'participant';
   export let size: 'sm' | 'md' = 'md';
+  export let avatarUrl: string | undefined = undefined;
+  export let email: string | undefined = undefined;
 
-  // DiceBear API를 사용하여 이름 기반의 일관된 아바타 URL 생성
-  const avatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3d4`;
+  // DiceBear API URL인지 확인하는 함수
+  function isDiceBearUrl(url: string | undefined): boolean {
+    return url?.includes('api.dicebear.com') ?? false;
+  }
+
+  // DiceBear API URL 생성 함수
+  function createDiceBearUrl(seed: string): string {
+    return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3d4`;
+  }
+
+  // 제공된 avatarUrl을 우선 사용하고, 없는 경우 이메일을 시드로 사용
+  $: finalAvatarUrl = avatarUrl || createDiceBearUrl(email?.split('@')[0] || 'default');
 </script>
 
 <div class="participant-badge" class:sm={size === 'sm'}>
   <img 
-    src={avatarUrl} 
+    src={finalAvatarUrl} 
     alt={`${name}의 아바타`} 
     class="avatar"
   />

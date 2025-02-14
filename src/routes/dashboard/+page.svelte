@@ -26,6 +26,8 @@
 	let isUpdatingName = false;
 	let showProfileSheet = false;
 	let avatarSeed = '';
+	let avatarOptions = [''];  // 아바타 옵션 배열
+	let selectedAvatarIndex = 0;  // 선택된 아바타 인덱스
 	let isUpdatingProfile = false;
 
 	// 토스트 상태
@@ -46,6 +48,36 @@
 			
 		if (!error && data) {
 			profile = data;
+
+			// 아바타 URL이 없거나 DiceBear API 기반이 아닌 경우 업데이트
+			const isDiceBearUrl = (url?: string) => url?.includes('api.dicebear.com') ?? false;
+			const createDiceBearUrl = (name: string) => 
+				`https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(name)}&backgroundColor=b6e3d4`;
+
+			if (!isDiceBearUrl(data.avatar_url)) {
+				const newAvatarUrl = createDiceBearUrl(data.name || $user.email?.split('@')[0] || '');
+
+				// Auth 메타데이트 업데이트
+				await supabase.auth.updateUser({
+					data: { avatar_url: newAvatarUrl }
+				});
+
+				// 프로필 테이블 업데이트
+				await supabase
+					.from('profiles')
+					.update({ avatar_url: newAvatarUrl })
+					.eq('id', $user.id);
+
+				// 로컬 상태 업데이트
+				profile.avatar_url = newAvatarUrl;
+				$user = {
+					...$user,
+					user_metadata: {
+						...$user.user_metadata,
+						avatar_url: newAvatarUrl
+					}
+				} as typeof $user;
+			}
 		}
 	}
 
@@ -120,9 +152,15 @@
 		try {
 			isUpdatingName = true;
 
-			// 1. Auth 메타데이터 업데이트
+			// 새로운 아바타 URL 생성
+			const newAvatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(userName.trim())}&backgroundColor=b6e3d4`;
+
+			// 1. Auth 메타데이트 업데이트
 			const { error: authError } = await supabase.auth.updateUser({
-				data: { name: userName.trim() }
+				data: { 
+					name: userName.trim(),
+					avatar_url: newAvatarUrl
+				}
 			});
 
 			if (authError) throw authError;
@@ -130,18 +168,21 @@
 			// 2. 프로필 테이블 업데이트
 			const { error: profileError } = await supabase
 				.from('profiles')
-				.update({ name: userName.trim() })
+				.update({ 
+					name: userName.trim(),
+					avatar_url: newAvatarUrl
+				})
 				.eq('id', $user.id);
 
 			if (profileError) throw profileError;
 
 			// 3. 로컬 상태 업데이트
-			profile = { ...profile, name: userName.trim() };
 			$user = {
 				...$user,
 				user_metadata: {
 					...$user.user_metadata,
-					name: userName.trim()
+					name: userName.trim(),
+					avatar_url: newAvatarUrl
 				}
 			} as typeof $user;
 
@@ -166,8 +207,35 @@
 
 	function openProfileSheet() {
 		userName = profile?.name || '';
-		avatarSeed = profile?.avatar_seed || profile?.name || $user?.email?.split('@')[0] || '';
+		// 현재 아바타 URL에서 시드 추출
+		const currentUrl = profile?.avatar_url || '';
+		const seedMatch = currentUrl.match(/seed=([^&]+)/);
+		avatarSeed = seedMatch ? decodeURIComponent(seedMatch[1]) : (profile?.name || $user?.email?.split('@')[0] || '');
+		generateAvatarOptions();
 		showProfileSheet = true;
+	}
+
+	function generateAvatarOptions() {
+		// 현재 시드는 그대로 유지
+		const currentSeed = avatarSeed;
+		
+		// 5개의 새로운 랜덤 옵션 생성
+		const newOptions = Array.from({ length: 5 }, () => Math.random().toString(36).substring(7));
+		avatarOptions = [currentSeed, ...newOptions];
+		selectedAvatarIndex = 0;  // 현재 아바타를 선택된 상태로 유지
+	}
+
+	function refreshAvatarOptions() {
+		// 현재 선택된 아바타는 유지하고 나머지만 새로 생성
+		const currentSeed = avatarOptions[selectedAvatarIndex];
+		const newOptions = Array.from({ length: 5 }, () => Math.random().toString(36).substring(7));
+		avatarOptions = [currentSeed, ...newOptions];
+		selectedAvatarIndex = 0;  // 첫 번째 옵션(현재 선택된 아바타)을 선택된 상태로 유지
+	}
+
+	function selectAvatar(index: number) {
+		selectedAvatarIndex = index;
+		avatarSeed = avatarOptions[index];
 	}
 
 	async function handleUpdateProfile() {
@@ -176,9 +244,16 @@
 		try {
 			isUpdatingProfile = true;
 
-			// 1. Auth 메타데이터 업데이트
+			// 선택된 아바타의 시드와 URL 생성
+			const selectedSeed = avatarOptions[selectedAvatarIndex];
+			const newAvatarUrl = `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(selectedSeed)}&backgroundColor=b6e3d4`;
+
+			// 1. Auth 메타데이트
 			const { error: authError } = await supabase.auth.updateUser({
-				data: { name: userName.trim() }
+				data: { 
+					name: userName.trim(),
+					avatar_url: newAvatarUrl
+				}
 			});
 
 			if (authError) throw authError;
@@ -188,7 +263,7 @@
 				.from('profiles')
 				.update({ 
 					name: userName.trim(),
-					avatar_seed: avatarSeed
+					avatar_url: newAvatarUrl
 				})
 				.eq('id', $user.id);
 
@@ -198,17 +273,20 @@
 			profile = { 
 				...profile, 
 				name: userName.trim(),
-				avatar_seed: avatarSeed
+				avatar_url: newAvatarUrl
 			};
+			
 			$user = {
 				...$user,
 				user_metadata: {
 					...$user.user_metadata,
-					name: userName.trim()
+					name: userName.trim(),
+					avatar_url: newAvatarUrl,
+					avatar_seed: selectedSeed
 				}
 			} as typeof $user;
 
-			showProfileSheet = false;
+			showProfileSheet = false;  // 프로필 시트 닫기
 			toastMessage = '프로필이 저장되었습니다';
 			toastType = 'success';
 			showToast = true;
@@ -223,7 +301,8 @@
 	}
 
 	function generateNewAvatar() {
-		avatarSeed = Math.random().toString(36).substring(7);
+		avatarOptions.push(Math.random().toString(36).substring(7));
+		avatarOptions = avatarOptions;  // 배열 업데이트를 위한 재할당
 	}
 </script>
 
@@ -273,7 +352,7 @@
 						<button class="avatar-button" on:click={openProfileSheet}>
 							<div class="avatar">
 								<img
-									src={`https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(profile?.name || $user?.email?.split('@')[0] || '')}&backgroundColor=b6e3d4`}
+									src={profile?.avatar_url || `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent($user?.email?.split('@')[0] || '')}&backgroundColor=b6e3d4`}
 									alt="프로필 아바타"
 								/>
 							</div>
@@ -497,24 +576,45 @@
 		<form on:submit|preventDefault={handleUpdateProfile} class="create-form">
 			<div class="form-group">
 				<label class="font-bold">프로필 사진</label>
-				<div class="avatar-settings">
-					<div class="avatar-preview">
-						<img
-							src={`https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(avatarSeed)}&backgroundColor=b6e3d4`}
-							alt="프로필 아바타 미리보기"
-						/>
+				<div class="avatar-selection">
+					<div class="current-avatar">
+						<div class="avatar-option selected">
+							<img
+								src={`https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(avatarOptions[selectedAvatarIndex])}&backgroundColor=b6e3d4`}
+								alt="현재 프로필 아바타"
+							/>
+						</div>
 					</div>
-					<Button
-						variant="outline"
-						on:click={generateNewAvatar}
-						type="button"
-						class="font-regular"
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
-						</svg>
-						다른 이미지
-					</Button>
+					<div class="avatar-candidates">
+						<div class="candidates-header">
+							<span class="font-regular">다른 후보</span>
+							<button
+								type="button"
+								class="refresh-button font-regular"
+								on:click={refreshAvatarOptions}
+							>
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
+								</svg>
+								새로 고치기
+							</button>
+						</div>
+						<div class="avatar-grid">
+							{#each avatarOptions.slice(1) as seed, i}
+								<button
+									type="button"
+									class="avatar-option"
+									class:selected={i + 1 === selectedAvatarIndex}
+									on:click={() => selectAvatar(i + 1)}
+								>
+									<img
+										src={`https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3d4`}
+										alt="프로필 아바타 옵션"
+									/>
+								</button>
+							{/each}
+						</div>
+					</div>
 				</div>
 			</div>
 			<div class="form-group">
@@ -972,5 +1072,130 @@
 		font-size: 1.25rem;
 		color: #111827;
 		line-height: 1.25;
+	}
+
+	.avatar-grid {
+		display: grid;
+		grid-template-columns: repeat(5, 1fr);
+		gap: 0.75rem;
+	}
+
+	.avatar-selection {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+
+	.current-avatar {
+		display: flex;
+		justify-content: center;
+	}
+
+	.current-avatar .avatar-option {
+		width: 6rem;
+		height: 6rem;
+		padding: 0;
+	}
+
+	.avatar-candidates {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		background: #f8fafc;
+		padding: 1rem;
+		border-radius: 0.75rem;
+	}
+
+	.candidates-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		color: #6b7280;
+	}
+
+	.refresh-button {
+		all: unset;
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.375rem 0.75rem;
+		font-size: 0.875rem;
+		color: #374151;
+		background: white;
+		border: 1px solid #e5e7eb;
+		border-radius: 9999px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.refresh-button:hover {
+		border-color: #064b45;
+		color: #064b45;
+	}
+
+	.refresh-button svg {
+		color: currentColor;
+	}
+
+	.avatar-option {
+		all: unset;
+		position: relative;
+		width: 100%;
+		padding-bottom: 100%;
+		border-radius: 50%;
+		overflow: hidden;
+		background: white;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.avatar-option::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border: 2px solid #e5e7eb;
+		border-radius: 50%;
+		transition: all 0.2s ease;
+	}
+
+	.avatar-option:hover::after {
+		border-color: #064b45;
+		box-shadow: 0 0 0 2px rgba(6, 75, 69, 0.1);
+	}
+
+	.avatar-option.selected::after {
+		border-color: #064b45;
+		border-width: 3px;
+	}
+
+	.avatar-option img {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.add-option {
+		background: #f3f4f6;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.add-option svg {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 1.5rem;
+		height: 1.5rem;
+		color: #6b7280;
+		transition: color 0.2s ease;
+	}
+
+	.add-option:hover svg {
+		color: #064b45;
 	}
 </style>
