@@ -68,6 +68,12 @@
 	}
 
 	function isDateDisabled(date: Date): boolean {
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		
+		// 오늘 이전의 날짜는 선택 불가능
+		if (date < today) return true;
+		
 		if (!selectedStartDate || selectedEndDate) return false;
 		
 		const diffDays = Math.floor(Math.abs(date.getTime() - selectedStartDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -347,7 +353,14 @@
 	}
 
 	.day.today {
-		font-weight: 600;
+		font-weight: bold;
+		font-style: italic;
+		color: #064b45;
+	}
+
+	.day.today.selected {
+		background-color: #064b45;
+		color: white;
 	}
 
 	.day.selected {
