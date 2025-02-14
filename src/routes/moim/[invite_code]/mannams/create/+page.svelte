@@ -6,6 +6,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 	import DateRangePicker from '$lib/components/DateRangePicker.svelte';
+	import TimeRangePicker from '$lib/components/TimeRangePicker.svelte';
 
 	let moim: any = null;
 	let loading = true;
@@ -16,8 +17,8 @@
 	let mannamDescription = '';
 	let mannamStartDate = '';
 	let mannamEndDate = '';
-	let mannamTimeRange = { start: '09:00', end: '21:00' };
-	let mannamTimeSlotMinutes = 30;
+	let mannamTimeRange = { start: '00:00', end: '23:00' };
+	let mannamTimeSlotMinutes = 60;
 	let mannamError = '';
 
 	async function loadMoimData() {
@@ -120,7 +121,6 @@
 
 	{#if loading}
 		<div class="loading-container">
-			<!-- svelte-ignore element_invalid_self_closing_tag -->
 			<div class="spinner" />
 		</div>
 	{:else if errorMessage}
@@ -131,7 +131,6 @@
 				<div class="error-message">{mannamError}</div>
 			{/if}
 			<form on:submit|preventDefault={handleCreateMannam} class="create-mannam-form">
-				<!-- 만남 제목 -->
 				<div class="form-group">
 					<label for="mannamTitle" class="form-label">만남 제목</label>
 					<input
@@ -144,7 +143,6 @@
 					/>
 				</div>
 
-				<!-- 만남 설명 -->
 				<div class="form-group">
 					<label for="mannamDescription" class="form-label">설명</label>
 					<textarea
@@ -156,52 +154,22 @@
 					></textarea>
 				</div>
 
-				<!-- 시작 날짜 / 종료 날짜 -->
-				<DateRangePicker
-					bind:startDate={mannamStartDate}
-					bind:endDate={mannamEndDate}
-					maxRange={7}
-				/>
-
-				<!-- 시간 범위 -->
 				<div class="form-group">
-					<!-- svelte-ignore a11y_label_has_associated_control -->
-					<label class="form-label">시간 범위</label>
-					<div class="form-row">
-						<div class="form-group flex-1">
-							<label for="mannamTimeRangeStart" class="form-sublabel">시작 시간</label>
-							<input
-								type="time"
-								id="mannamTimeRangeStart"
-								bind:value={mannamTimeRange.start}
-								required
-								class="form-input"
-							/>
-						</div>
-						<div class="form-group flex-1">
-							<label for="mannamTimeRangeEnd" class="form-sublabel">종료 시간</label>
-							<input
-								type="time"
-								id="mannamTimeRangeEnd"
-								bind:value={mannamTimeRange.end}
-								required
-								class="form-input"
-							/>
-						</div>
-					</div>
+					<label class="form-label">날짜 범위</label>
+					<DateRangePicker
+						bind:startDate={mannamStartDate}
+						bind:endDate={mannamEndDate}
+						maxRange={7}
+					/>
 				</div>
 
-				<!-- 시간 슬롯 단위 -->
 				<div class="form-group">
-					<label for="mannamTimeSlotMinutes" class="form-label">시간 슬롯 단위</label>
-					<select id="mannamTimeSlotMinutes" bind:value={mannamTimeSlotMinutes} class="form-input">
-						<option value={15}>15분</option>
-						<option value={30}>30분</option>
-						<option value={60}>1시간</option>
-					</select>
+					<TimeRangePicker
+						bind:startTime={mannamTimeRange.start}
+						bind:endTime={mannamTimeRange.end}
+					/>
 				</div>
 
-				<!-- 폼 액션 버튼 -->
 				<div class="form-actions">
 					<Button variant="outline" on:click={() => history.back()} flex={1}>취소</Button>
 					<Button 
@@ -224,6 +192,7 @@
 		max-width: 500px;
 		margin: 0 auto;
 		padding: 1rem;
+		background: white;
 	}
 
 	.create-mannam-header {
@@ -231,16 +200,18 @@
 		align-items: center;
 		gap: 0.75rem;
 		padding: 1rem 0;
-		border-bottom: 1px solid #f0f0f0;
-		margin-bottom: 1.5rem;
+		border-bottom: 1px solid #e5e7eb;
+		margin-bottom: 2rem;
 	}
 
 	.back-btn {
 		background: none;
 		border: none;
-		padding: 0;
+		padding: 0.5rem;
+		margin-left: -0.5rem;
 		cursor: pointer;
 		color: #064b45;
+		line-height: 0;
 	}
 
 	.page-title {
@@ -267,12 +238,8 @@
 	}
 
 	@keyframes spin {
-		0% {
-			transform: rotate(0deg);
-		}
-		100% {
-			transform: rotate(360deg);
-		}
+		0% { transform: rotate(0deg); }
+		100% { transform: rotate(360deg); }
 	}
 
 	.create-mannam-content {
@@ -281,41 +248,30 @@
 
 	.error-message {
 		padding: 0.75rem;
-		margin-bottom: 1rem;
+		margin-bottom: 1.5rem;
 		background-color: #fee2e2;
 		border: 1px solid #f87171;
-		border-radius: 0.375rem;
+		border-radius: 0.5rem;
 		color: #991b1b;
 		font-size: 0.875rem;
 	}
 
-	.form-group {
-		margin-bottom: 1.5rem;
-	}
-
-	.form-row {
+	.create-mannam-form {
 		display: flex;
-		gap: 1rem;
+		flex-direction: column;
+		gap: 1.5rem;
 	}
 
-	.flex-1 {
-		flex: 1;
+	.form-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
 	}
 
 	.form-label {
-		display: block;
 		font-size: 0.875rem;
 		font-weight: 500;
 		color: #374151;
-		margin-top: 2rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.form-sublabel {
-		display: block;
-		font-size: 0.813rem;
-		color: #6b7280;
-		margin-bottom: 0.5rem;
 	}
 
 	.form-input {
@@ -324,6 +280,7 @@
 		border: 1px solid #d1d5db;
 		border-radius: 0.5rem;
 		font-size: 0.875rem;
+		color: #111827;
 		transition: all 0.2s;
 	}
 
@@ -333,18 +290,18 @@
 		box-shadow: 0 0 0 2px rgba(6, 75, 69, 0.1);
 	}
 
-	select.form-input {
-		appearance: none;
-		background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-		background-position: right 0.5rem center;
-		background-repeat: no-repeat;
-		background-size: 1.5em 1.5em;
-		padding-right: 2.5rem;
+	.form-input::placeholder {
+		color: #9ca3af;
+	}
+
+	textarea.form-input {
+		resize: vertical;
+		min-height: 80px;
 	}
 
 	.form-actions {
 		display: flex;
 		gap: 0.75rem;
-		margin-top: 2rem;
+		margin-top: 0.5rem;
 	}
 </style> 
