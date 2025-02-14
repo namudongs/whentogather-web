@@ -14,7 +14,15 @@
   export let readOnly: boolean = true;
   export let confirmedSlots: { date: string; slot: string }[] = [];
   export let selectedSlots: { date: string; slot: string }[] = [];
-  export let responses: { user: { id: string; name: string }; available_slots: { date: string; slot: string }[] }[] = [];
+  export let responses: { 
+    user: { 
+      id: string; 
+      name: string; 
+      email: string;
+      avatar_url: string;
+    }; 
+    available_slots: { date: string; slot: string }[] 
+  }[] = [];
   export let showAvatars: boolean = true;
 
   const dispatch = createEventDispatcher();
@@ -187,7 +195,7 @@
     return `background-color: rgba(6, 75, 69, ${alpha})`;
   }
 
-  function getRespondents(date: string, slot: string): { id: string; name: string }[] {
+  function getRespondents(date: string, slot: string): { id: string; name: string; email: string; avatar_url: string }[] {
     return responses
       .filter(response => 
         response.available_slots.some(s => s.date === date && s.slot === slot)
@@ -265,7 +273,12 @@
                       margin-left: {i === 0 ? 0 : -14 - (respondents.length - 1) * 0.5}px;
                     "
                   >
-                    <ParticipantAvatar name={respondent.name} size="sm" />
+                    <ParticipantAvatar 
+                      name={respondent.name} 
+                      size="sm" 
+                      email={respondent.email}
+                      avatarUrl={respondent.avatar_url}
+                    />
                   </div>
                 {/each}
               </div>

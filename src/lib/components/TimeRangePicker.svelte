@@ -5,8 +5,6 @@
 
 	export let startTime = '00:00';
 	export let endTime = '23:00';
-	export let label = '시간 범위';
-	export let required = false;
 
 	let showBottomSheet = false;
 	let tempStartTime = startTime;

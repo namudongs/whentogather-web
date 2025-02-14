@@ -175,7 +175,11 @@
 		<div class="moim-content-wrapper">
 			<header class="moim-header">
 				<div class="header-content">
-					<button class="back-btn font-regular" on:click={handleCancel}>
+					<button 
+						class="back-btn font-regular" 
+						on:click={() => goto(`/${$page.params.moim_url}/${$page.params.mannam_url}`)}
+						aria-label="뒤로 가기"
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							width="24"

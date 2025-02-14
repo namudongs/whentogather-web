@@ -116,7 +116,7 @@
 	<div class="moim-content-wrapper">
 		<header class="moim-header">
 			<div class="header-content">
-				<button class="back-btn font-regular" on:click={() => history.back()}>
+				<button class="back-btn font-regular" on:click={() => history.back()} aria-label="뒤로 가기">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="24"
@@ -151,43 +151,47 @@
 			{:else}
 				<form on:submit|preventDefault={handleCreateMannam} class="create-form">
 					<div class="form-group">
-						<label for="mannamTitle" class="form-label font-bold">만남 제목</label>
+						<label for="mannam-title" class="font-bold">만남 제목</label>
 						<input
+							id="mannam-title"
 							type="text"
-							id="mannamTitle"
 							bind:value={mannamTitle}
-							required
+							placeholder="예: 3월 정기 모임"
 							class="form-input font-regular"
-							placeholder="3월 정기 모임"
+							required
 						/>
 					</div>
 
 					<div class="form-group">
-						<label for="mannamDescription" class="form-label font-bold">설명 (선택)</label>
+						<label for="mannam-description" class="font-bold">만남 설명 (선택)</label>
 						<textarea
-							id="mannamDescription"
+							id="mannam-description"
 							bind:value={mannamDescription}
-							rows="4"
+							placeholder="만남에 대한 간단한 소개 또는 설명을 작성해 주세요."
 							class="form-input font-regular"
-							placeholder="이번 모임의 주제나 준비물 등을 적어주세요"
+							rows="4"
 						></textarea>
 					</div>
 
 					<div class="form-group">
-						<label class="form-label font-bold">날짜 범위</label>
-						<DateRangePicker
-							bind:startDate={mannamStartDate}
-							bind:endDate={mannamEndDate}
-							maxRange={7}
-						/>
+						<label for="date-range" class="form-label font-bold">날짜 범위</label>
+						<div id="date-range">
+							<DateRangePicker
+								bind:startDate={mannamStartDate}
+								bind:endDate={mannamEndDate}
+								maxRange={7}
+							/>
+						</div>
 					</div>
 
 					<div class="form-group">
-						<label class="form-label font-bold">시간 범위</label>
-						<TimeRangePicker
-							bind:startTime={mannamTimeRange.start}
-							bind:endTime={mannamTimeRange.end}
-						/>
+						<label for="time-range" class="form-label font-bold">시간 범위</label>
+						<div id="time-range">
+							<TimeRangePicker
+								bind:startTime={mannamTimeRange.start}
+								bind:endTime={mannamTimeRange.end}
+							/>
+						</div>
 					</div>
 
 					<div class="form-actions">
@@ -196,7 +200,7 @@
 							variant="primary" 
 							type="submit" 
 							flex={2} 
-							disabled={!mannamTitle.trim()}
+							disabled={!mannamTitle.trim() || !mannamStartDate || !mannamEndDate}
 							class="font-bold"
 						>만남 생성하기</Button>
 					</div>

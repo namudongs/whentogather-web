@@ -25,6 +25,8 @@
 	interface Profile {
 		id: string;
 		name: string;
+		email: string;
+		avatar_url: string;
 	}
 
 	onMount(loadData);
@@ -84,7 +86,7 @@
 			if (userIds.length > 0) {
 				const { data: profiles, error: profilesError } = await supabase
 					.from('profiles')
-					.select('id, name')
+					.select('id, name, email, avatar_url')
 					.in('id', userIds);
 
 				if (profilesError) {
@@ -97,7 +99,12 @@
 			// 응답 데이터와 프로필 정보 결합
 			responses = responsesData.map(response => ({
 				...response,
-				user: profilesData.find(p => p.id === response.user_id) || { id: response.user_id, name: '이름없음' }
+				user: profilesData.find(p => p.id === response.user_id) || { 
+					id: response.user_id, 
+					name: '이름없음',
+					email: '',
+					avatar_url: ''
+				}
 			}));
 
 			// 5. 히트맵 데이터 생성
@@ -176,7 +183,11 @@
 		<div class="moim-content-wrapper">
 			<header class="moim-header">
 				<div class="header-content">
-					<button class="back-btn font-regular" on:click={() => history.back()}>
+					<button 
+						class="back-btn font-regular" 
+						on:click={() => goto(`/${$page.params.moim_url}/${$page.params.mannam_url}`)}
+						aria-label="뒤로 가기"
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							width="24"
@@ -216,7 +227,7 @@
 							readOnly={false}
 							on:change={handleSlotsChange}
 							{selectedSlots}
-							confirmedSlots={mannam.confirmed_date && mannam.confirmed_time ? [{ date: mannam.confirmed_date, slot: mannam.confirmed_time }] : []}
+							confirmedSlots={mannam.confirmed_slots || []}
 							responses={responses.map(response => ({
 								user: response.user,
 								available_slots: Array.isArray(response.available_slots)

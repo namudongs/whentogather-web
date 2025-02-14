@@ -142,7 +142,11 @@
 		<div class="moim-content-wrapper">
 			<header class="moim-header">
 				<div class="header-content">
-					<button class="back-btn font-regular" on:click={() => history.back()}>
+					<button 
+						class="back-btn font-regular" 
+						on:click={() => goto(`/${$page.params.moim_url}/${$page.params.mannam_url}`)}
+						aria-label="뒤로 가기"
+					>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							width="24"
@@ -188,35 +192,34 @@
 								placeholder="만남에 대한 설명을 입력해주세요"
 								bind:value={description}
 								rows="3"
-							/>
+							></textarea>
 						</div>
 					</section>
 
 					<!-- 만남 기간 섹션 -->
 					<section class="moim-section">
 						<div class="form-group">
-							<label class="form-label font-bold">만남 기간</label>
-							<DateRangePicker
-								bind:startDate
-								bind:endDate
-							/>
+							<label for="date-picker" class="form-label font-bold">날짜 범위</label>
+							<div id="date-picker">
+								<DateRangePicker
+									bind:startDate={startDate}
+									bind:endDate={endDate}
+									maxRange={7}
+								/>
+							</div>
 						</div>
 					</section>
 
 					<!-- 시간 범위 섹션 -->
 					<section class="moim-section">
 						<div class="form-group">
-							<label class="form-label font-bold">시간 범위</label>
-							<TimeRangePicker
-								startTime={timeRange.start}
-								endTime={timeRange.end}
-								on:change={(e) => {
-									timeRange = {
-										start: e.detail.startTime,
-										end: e.detail.endTime
-									};
-								}}
-							/>
+							<label for="time-picker" class="form-label font-bold">시간 범위</label>
+							<div id="time-picker">
+								<TimeRangePicker
+									bind:startTime={timeRange.start}
+									bind:endTime={timeRange.end}
+								/>
+							</div>
 						</div>
 					</section>
 

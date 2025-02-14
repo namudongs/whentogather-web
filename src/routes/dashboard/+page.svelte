@@ -508,13 +508,14 @@
 			<ErrorMessage message={$moimError} />
 		{/if}
 		<div class="form-group">
-			<label for="title" class="font-bold">모임 제목</label>
+			<label for="moim-title" class="font-bold">모임 제목</label>
 			<input
-				id="title"
+				id="moim-title"
 				type="text"
 				bind:value={title}
 				placeholder="예: 동아리 회의"
 				class="form-input font-regular"
+				required
 			/>
 		</div>
 		<div class="form-group">
@@ -575,8 +576,8 @@
 	<BottomSheet show={showProfileSheet} onClose={() => (showProfileSheet = false)} title="프로필 설정">
 		<form on:submit|preventDefault={handleUpdateProfile} class="create-form">
 			<div class="form-group">
-				<label class="font-bold">프로필 사진</label>
-				<div class="avatar-selection">
+				<label for="profile-avatar" class="font-bold">프로필 사진</label>
+				<div id="profile-avatar" class="avatar-selection">
 					<div class="current-avatar">
 						<div class="avatar-option selected">
 							<img
@@ -672,6 +673,15 @@
 		z-index: 1000;
 	}
 
+	.error-container {
+		max-width: 500px;
+		margin: 2rem auto;
+		padding: 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
 	.dashboard-container {
 		width: 100%;
 		min-height: 100vh;
@@ -696,11 +706,9 @@
 	}
 
 	.header-content {
-		max-width: 500px;
-		margin: 0 auto;
 		display: flex;
-		justify-content: space-between;
 		align-items: center;
+		gap: 0.75rem;
 		padding: 0 0.5rem;
 	}
 
@@ -739,9 +747,7 @@
 	}
 
 	.dashboard-content {
-		display: flex;
-		flex-direction: column;
-		padding: 1.5rem 0.5rem 0.5rem;
+		padding: 0 0.5rem;
 	}
 
 	.welcome-section {
@@ -784,33 +790,11 @@
 		color: #6b7280;
 	}
 
-	.user-name-button {
-		all: unset;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		cursor: pointer;
+	.user-name {
+		margin: 0;
 		font-size: 1.25rem;
 		color: #111827;
 		line-height: 1.25;
-		padding: 0.25rem 0.5rem;
-		margin: -0.25rem -0.5rem;
-		border-radius: 0.375rem;
-		transition: all 0.2s ease;
-	}
-
-	.user-name-button:hover {
-		background: rgba(6, 75, 69, 0.05);
-	}
-
-	.user-name-button .edit-icon {
-		opacity: 0;
-		color: #064b45;
-		transition: opacity 0.2s ease;
-	}
-
-	.user-name-button:hover .edit-icon {
-		opacity: 1;
 	}
 
 	.quick-actions {
@@ -838,14 +822,13 @@
 	}
 
 	.count-badge {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
 		gap: 0.25rem;
 		padding: 0.25rem 0.5rem;
 		background-color: rgb(243 244 246);
 		border-radius: 9999px;
 		font-size: 0.875rem;
-		line-height: 1;
 	}
 
 	.meetings-list {
@@ -1014,27 +997,6 @@
 		margin-top: 0.25rem;
 	}
 
-	.avatar-settings {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-	}
-
-	.avatar-preview {
-		width: 4rem;
-		height: 4rem;
-		border-radius: 50%;
-		overflow: hidden;
-		background: white;
-		border: 2px solid #e5e7eb;
-	}
-
-	.avatar-preview img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-
 	.avatar-button {
 		all: unset;
 		position: relative;
@@ -1065,13 +1027,6 @@
 		color: white;
 		opacity: 0.9;
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-	}
-
-	.user-name {
-		margin: 0;
-		font-size: 1.25rem;
-		color: #111827;
-		line-height: 1.25;
 	}
 
 	.avatar-grid {
@@ -1175,27 +1130,5 @@
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
-	}
-
-	.add-option {
-		background: #f3f4f6;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.add-option svg {
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		width: 1.5rem;
-		height: 1.5rem;
-		color: #6b7280;
-		transition: color 0.2s ease;
-	}
-
-	.add-option:hover svg {
-		color: #064b45;
 	}
 </style>

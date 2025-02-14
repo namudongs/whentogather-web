@@ -15,11 +15,12 @@
 	import { moims, isLoading, error as moimError, createMoim, loadMoims } from '$lib/stores/moim';
 	import { format } from 'date-fns';
 	import { ko } from 'date-fns/locale/ko';
+	import { writable } from 'svelte/store';
 
 	/*** 페이지 전역 상태 ***/
-	let moim: any = null;
+	const moim = writable<any>(null);
 	let participants: any[] = [];
-	let mannams: any[] = [];
+	const mannams = writable<any[]>([]);
 	let errorMessage = '';
 	let loading = false;
 	let showInitialSpinner = true;
@@ -136,13 +137,13 @@
 					errorMessage = '해당 초대 코드에 관한 모임이 없습니다. 초대 코드: ' + inviteCode;
 					return;
 				}
-				moim = moimData;
+				moim.set(moimData);
 
 				// 3) 참여자 목록 조회
 				const { data: partsData, error: partsError } = await supabase
 					.from('moim_participants')
 					.select('user_id, role')
-					.eq('moim_id', moim.id);
+					.eq('moim_id', moimData.id);
 				if (partsError) {
 					errorMessage = '참여자 목록을 불러오는 중에 에러가 발생했습니다.' + partsError.message;
 					return;
@@ -185,7 +186,7 @@
 				const { data: mannamsData, error: mannamsError } = await supabase
 					.from('mannams')
 					.select('*')
-					.eq('moim_id', moim.id)
+					.eq('moim_id', moimData.id)
 					.order('created_at', { ascending: false });
 				if (mannamsError) {
 					errorMessage = `만남 목록을 불러오는 중에 에러가 발생했습니다: ${
@@ -193,7 +194,7 @@
 					}`;
 					return;
 				}
-				mannams = mannamsData ?? [];
+				mannams.set(mannamsData ?? []);
 
 				// 5) 실시간 구독 설정 (참여자 목록 업데이트)
 				subscription = supabase
@@ -204,13 +205,13 @@
 							event: '*',
 							schema: 'public',
 							table: 'moim_participants',
-							filter: `moim_id=eq.${moim.id}`
+							filter: `moim_id=eq.${moimData.id}`
 						},
 						async () => {
 							const { data: updatedPartsData } = await supabase
 								.from('moim_participants')
 								.select('user_id, role')
-								.eq('moim_id', moim.id);
+								.eq('moim_id', moimData.id);
 							if (updatedPartsData) {
 								participants = updatedPartsData;
 							}
@@ -250,8 +251,8 @@
 	}
 
 	function openEditMoimSheet() {
-		editTitle = moim.title;
-		editDescription = moim.description || '';
+		editTitle = $moim?.title || '';
+		editDescription = $moim?.description || '';
 		showEditMoimSheet = true;
 	}
 
@@ -265,11 +266,15 @@
 					title: editTitle,
 					description: editDescription
 				})
-				.eq('id', moim.id);
+				.eq('id', $moim?.id);
 
 			if (error) throw error;
 
-			moim = { ...moim, title: editTitle, description: editDescription };
+			moim.update((moimData) => ({
+				...moimData,
+				title: editTitle,
+				description: editDescription
+			}));
 			showEditMoimSheet = false;
 			toastMessage = '모임 정보가 수정되었습니다';
 			toastType = 'success';
@@ -286,7 +291,7 @@
 			const { error } = await supabase
 				.from('moims')
 				.delete()
-				.eq('id', moim.id);
+				.eq('id', $moim?.id);
 
 			if (error) throw error;
 
@@ -308,12 +313,12 @@
 	}
 
 	async function handleCreateMannam() {
-		if (!moim || !$user) return;
+		if (!$moim || !$user) return;
 		try {
 			const { data: mannam, error: err } = await supabase
 				.from('mannams')
 				.insert({
-					moim_id: moim.id,
+					moim_id: $moim.id,
 					creator_id: $user.id,
 					title: mannamTitle,
 					description: mannamDescription,
@@ -326,7 +331,7 @@
 				.select()
 				.single();
 			if (err) throw err;
-			mannams = [...mannams, mannam];
+			mannams.update((mannamsData) => [...mannamsData, mannam]);
 			// 입력 폼 초기화
 			mannamTitle = '';
 			mannamDescription = '';
@@ -350,7 +355,7 @@
 			isJoining = true;
 			const { data: insertedParticipants, error: insertError } = await supabase
 				.from('moim_participants')
-				.insert({ moim_id: moim.id, user_id: $user.id, role: 'participant' })
+				.insert({ moim_id: $moim?.id, user_id: $user.id, role: 'participant' })
 				.select();
 			if (insertError) {
 				errorMessage = `참여자를 추가하는 중에 에러가 발생했습니다: ${
@@ -466,7 +471,17 @@
 		}
 	}
 
-	$: title = $moim ? `${$moim.name} - 언제모여` : '언제모여';
+	$: title = $moim ? `${$moim.title} - 언제모여` : '언제모여';
+
+	interface Profile {
+		id: string;
+		name: string;
+		email: string;
+		avatar_url: string;
+	}
+
+	// Computed properties
+	$: isCreator = $moim?.creator_id === $user?.id;
 </script>
 
 <svelte:head>
@@ -495,17 +510,17 @@
 					</button>
 					<div class="title-with-badge">
 						<span class="header-badge font-regular">모임</span>
-						<h1 class="moim-title font-extrabold">{moim?.title || '모임 상세'}</h1>
+						<h1 class="moim-title font-extrabold">{$moim?.title || '모임 상세'}</h1>
 					</div>
 				</div>
 			</header>
 
 			<main class="moim-content">
-				{#if moim}
+				{#if $moim}
 					<!-- 모임 설명 섹션 -->
 					<section class="moim-description-section">
-						{#if moim.description}
-							<p class="moim-description font-regular">{moim.description}</p>
+						{#if $moim.description}
+							<p class="moim-description font-regular">{$moim.description}</p>
 							<div class="meta-divider"></div>
 						{/if}
 						<div class="meta">
@@ -524,9 +539,9 @@
 										d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
 									/>
 								</svg>
-								<span class="info-text">{format(new Date(moim.created_at), 'PPP p', { locale: ko })} 생성</span>
+								<span class="info-text">{format(new Date($moim.created_at), 'PPP p', { locale: ko })} 생성</span>
 							</div>
-							{#if moim.updated_at && new Date(moim.updated_at).getTime() - new Date(moim.created_at).getTime() > 1000}
+							{#if $moim.updated_at && new Date($moim.updated_at).getTime() - new Date($moim.created_at).getTime() > 1000}
 								<div class="info-item">
 									<svg
 										class="info-icon"
@@ -542,7 +557,7 @@
 											d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
 										/>
 									</svg>
-									<span class="info-text">{format(new Date(moim.updated_at), 'PPP p', { locale: ko })} 수정</span>
+									<span class="info-text">{format(new Date($moim.updated_at), 'PPP p', { locale: ko })} 수정</span>
 								</div>
 							{/if}
 						</div>
@@ -554,7 +569,7 @@
 								</svg>
 								초대 링크 복사
 							</button>
-							{#if moim.creator_id === $user?.id}
+							{#if $moim.creator_id === $user?.id}
 								<button class="action-badge font-regular" on:click={openEditMoimSheet}>
 									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 										<path d="M12 20h9"></path>
@@ -614,7 +629,7 @@
 										<line x1="8" y1="2" x2="8" y2="6"></line>
 										<line x1="3" y1="10" x2="21" y2="10"></line>
 									</svg>
-									{mannams.length}개
+									{$mannams.length}개
 								</div>
 							</div>
 						</div>
@@ -632,9 +647,9 @@
 								새로운 만남 만들기
 							</Button>
 							
-							{#if mannams.length > 0}
+							{#if $mannams.length > 0}
 								<div class="mannams-grid">
-									{#each mannams as mannam}
+									{#each $mannams as mannam}
 										<a href="/{inviteCode}/{mannam.mannam_url}" class="mannam-card">
 											<div class="mannam-status-indicator" class:confirmed={mannam.status === 'confirmed'} class:cancelled={mannam.status === 'cancelled'}></div>
 											<div class="mannam-content">
@@ -718,7 +733,7 @@
 
 <BottomSheet show={showJoinModal} onClose={() => (showJoinModal = false)} title="모임 참여하기" blurBackground={true} showCloseButton={false}>
 	<div class="join-content">
-		<p class="join-message font-bold">"{moim?.title}" 모임에 참여하시겠습니까?</p>
+		<p class="join-message font-bold">"{$moim?.title}" 모임에 참여하시겠습니까?</p>
 		<p class="join-description font-regular">모임에 참여하면 일정 조율에 참여할 수 있습니다.</p>
 		<div class="form-actions">
 			<Button variant="outline" on:click={() => (showJoinModal = false)} flex={1} class="font-regular">취소</Button>
@@ -774,7 +789,7 @@
 
 <BottomSheet show={showDeleteConfirmSheet} onClose={() => (showDeleteConfirmSheet = false)} title="모임 삭제">
 	<div class="delete-confirm-content">
-		<p class="delete-message font-bold">"{moim?.title}" 모임을 삭제하시겠습니까?</p>
+		<p class="delete-message font-bold">"{$moim?.title}" 모임을 삭제하시겠습니까?</p>
 		<p class="delete-description font-regular">모임을 삭제하면 모든 만남과 참여자 정보가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</p>
 		<div class="form-actions">
 			<Button
