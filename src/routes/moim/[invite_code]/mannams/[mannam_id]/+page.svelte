@@ -11,6 +11,7 @@
 	import { goto } from '$app/navigation';
 	import { fade } from 'svelte/transition';
 	import ParticipantAvatar from '$lib/components/ParticipantAvatar.svelte';
+	import BottomSheet from '$lib/components/BottomSheet.svelte';
 
 	// State variables
 	let moim: any = null;
@@ -20,6 +21,9 @@
 	let error = '';
 	let heatmapData: { [key: string]: number } = {};
 	let myResponse: any = null;
+	let isDeleteSheetOpen = false;
+	let isDeleteConfirmSheetOpen = false;
+	let deleteType: 'cancel' | 'delete' | null = null;
 
 	interface Profile {
 		id: string;
@@ -27,7 +31,7 @@
 	}
 
 	// Computed properties
-	$: isCreator = moim?.creator_id === $user?.id;
+	$: isCreator = moim?.creator_id === $user?.id || mannam?.creator_id === $user?.id;
 	$: formattedStartDate = mannam?.start_date
 		? format(new Date(mannam.start_date), 'PPP', { locale: ko })
 		: '';
@@ -134,6 +138,32 @@
 			loading = false;
 		}
 	}
+
+	async function handleEdit() {
+		await goto(`/moim/${$page.params.invite_code}/mannams/${$page.params.mannam_id}/edit`);
+	}
+
+	async function handleDelete() {
+		try {
+			const { error: deleteError } = await supabase
+				.from('mannams')
+				.delete()
+				.eq('id', $page.params.mannam_id);
+
+			if (deleteError) throw new Error('만남을 삭제하는데 실패했습니다.');
+
+			await goto(`/moim/${$page.params.invite_code}`);
+		} catch (err) {
+			console.error('만남 삭제 중 에러 발생:', err);
+			error = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
+		}
+	}
+
+	function handleDeleteClick(type: 'cancel' | 'delete') {
+		deleteType = type;
+		isDeleteSheetOpen = false;
+		isDeleteConfirmSheetOpen = true;
+	}
 </script>
 
 {#if loading}
@@ -216,6 +246,24 @@
 							>
 						</div>
 					</div>
+					{#if isCreator}
+						<div class="badge-buttons">
+							<button class="badge-button" on:click={handleEdit}>
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+									<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+								</svg>
+								만남 정보 수정
+							</button>
+							<button class="badge-button delete" on:click={() => isDeleteSheetOpen = true}>
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M3 6h18"></path>
+									<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+								</svg>
+								만남 취소
+							</button>
+						</div>
+					{/if}
 				</section>
 
 				<!-- 응답자 섹션 -->
@@ -308,6 +356,59 @@
 			</main>
 		</div>
 	</div>
+
+	<!-- 삭제 시트 -->
+	<BottomSheet
+		show={isDeleteSheetOpen}
+		onClose={() => isDeleteSheetOpen = false}
+		title="만남 취소"
+	>
+		<div class="sheet-content">
+			<button class="sheet-button" on:click={() => handleDeleteClick('cancel')}>
+				<div class="sheet-button-content">
+					<div class="sheet-button-title">만남 취소하기</div>
+					<div class="sheet-button-description">만남을 취소하고 모든 참여자의 응답을 삭제합니다.</div>
+				</div>
+				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M9 18l6-6-6-6"></path>
+				</svg>
+			</button>
+			<button class="sheet-button delete" on:click={() => handleDeleteClick('delete')}>
+				<div class="sheet-button-content">
+					<div class="sheet-button-title">만남 삭제하기</div>
+					<div class="sheet-button-description">만남을 영구적으로 삭제합니다.</div>
+				</div>
+				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M9 18l6-6-6-6"></path>
+				</svg>
+			</button>
+		</div>
+	</BottomSheet>
+
+	<!-- 삭제 확인 시트 -->
+	<BottomSheet
+		show={isDeleteConfirmSheetOpen}
+		onClose={() => isDeleteConfirmSheetOpen = false}
+		title={deleteType === 'cancel' ? '만남을 취소하시겠습니까?' : '만남을 삭제하시겠습니까?'}
+	>
+		<div class="sheet-content">
+			<div class="sheet-description">
+				{#if deleteType === 'cancel'}
+					만남을 취소하면 모든 참여자의 응답이 삭제되며, 이 작업은 되돌릴 수 없습니다.
+				{:else}
+					만남을 삭제하면 모든 데이터가 영구적으로 삭제되며, 이 작업은 되돌릴 수 없습니다.
+				{/if}
+			</div>
+			<div class="sheet-buttons">
+				<button class="sheet-button cancel" on:click={() => isDeleteConfirmSheetOpen = false}>
+					취소
+				</button>
+				<button class="sheet-button delete" on:click={handleDelete}>
+					{deleteType === 'cancel' ? '만남 취소하기' : '만남 삭제하기'}
+				</button>
+			</div>
+		</div>
+	</BottomSheet>
 {/if}
 
 <style>
@@ -571,5 +672,169 @@
 		gap: 0.5rem;
 		margin: -0.25rem;
 		padding: 0.25rem;
+	}
+
+	.badge-buttons {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin-top: 1rem;
+		padding-top: 1rem;
+		border-top: 1px solid #e5e7eb;
+	}
+
+	.badge-button {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.375rem 0.75rem;
+		background: white;
+		border: 1px solid #e5e7eb;
+		border-radius: 9999px;
+		font-size: 0.75rem;
+		color: #374151;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.badge-button:hover {
+		border-color: #064b45;
+		color: #064b45;
+	}
+
+	.badge-button.delete {
+		background: white;
+		border-color: #e5e7eb;
+		color: #374151;
+	}
+
+	.badge-button.delete:hover {
+		border-color: #ef4444;
+		color: #ef4444;
+		background: white;
+	}
+
+	.badge-button svg {
+		color: currentColor;
+	}
+
+	.sheet-content {
+		padding: 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.sheet-button {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		padding: 1rem;
+		background: none;
+		border: none;
+		border-radius: 0.5rem;
+		font-size: 1rem;
+		cursor: pointer;
+		color: #111827;
+		transition: all 0.2s ease;
+		outline: 1px solid transparent;
+	}
+
+	.sheet-button:hover {
+		background-color: #f3f4f6;
+		outline: 1px solid #e5e7eb;
+	}
+
+	.sheet-button:first-child {
+		color: #374151;
+		background-color: #f3f4f6;
+	}
+
+	.sheet-button:first-child:hover {
+		background-color: #e5e7eb;
+		outline: 1px solid #d1d5db;
+	}
+
+	.sheet-button.delete {
+		color: #ef4444;
+		background-color: #fef2f2;
+	}
+
+	.sheet-button.delete:hover {
+		background-color: #fee2e2;
+		outline: 1px solid #fca5a5;
+	}
+
+	.sheet-button.cancel {
+		color: #6b7280;
+		background-color: #f3f4f6;
+	}
+
+	.sheet-button.cancel:hover {
+		background-color: #e5e7eb;
+		outline: 1px solid #d1d5db;
+	}
+
+	.sheet-button-content {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.25rem;
+		text-align: left;
+	}
+
+	.sheet-button-title {
+		font-size: 1rem;
+		font-weight: 500;
+	}
+
+	.sheet-button-description {
+		font-size: 0.875rem;
+		color: #6b7280;
+	}
+
+	.sheet-description {
+		padding: 1rem;
+		margin-bottom: 1rem;
+		background-color: #f8fafc;
+		border-radius: 0.5rem;
+		font-size: 0.875rem;
+		color: #6b7280;
+		line-height: 1.5;
+	}
+
+	.sheet-buttons {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.sheet-buttons .sheet-button {
+		flex: 1;
+		justify-content: center;
+		padding: 0.75rem;
+		font-weight: 500;
+	}
+
+	.sheet-buttons .sheet-button.delete {
+		background-color: #ef4444;
+		color: white;
+		border: 1px solid #ef4444;
+	}
+
+	.sheet-buttons .sheet-button.delete:hover {
+		background-color: #dc2626;
+		border-color: #dc2626;
+	}
+
+	.sheet-buttons .sheet-button.cancel {
+		background-color: #f3f4f6;
+		color: #6b7280;
+		border: 1px solid #e5e7eb;
+	}
+
+	.sheet-buttons .sheet-button.cancel:hover {
+		background-color: #e5e7eb;
+		border-color: #d1d5db;
 	}
 </style>
