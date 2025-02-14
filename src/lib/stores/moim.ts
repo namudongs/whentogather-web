@@ -9,7 +9,7 @@ export interface Moim {
   title: string;
   description: string | null;
   creator_id: string;
-  invite_code: string;
+  moim_url: string;
   created_at: string;
   updated_at: string;
   participant_count?: number;
@@ -183,7 +183,7 @@ export const joinMoimByInviteCode = async (inviteCode: string) => {
     const { data: moim, error: moimError } = await supabase
       .from('moims')
       .select('*')
-      .eq('invite_code', inviteCode)
+      .eq('moim_url', inviteCode)
       .single();
 
     if (moimError) throw moimError;
@@ -310,7 +310,7 @@ export const loadMoimByInviteCode = async (inviteCode: string) => {
     const { data, error: err } = await supabase
       .from('moims')
       .select('*, moim_participants(*)')
-      .eq('invite_code', inviteCode)
+      .eq('moim_url', inviteCode)
       .single();
 
     if (err) throw err;
@@ -325,7 +325,7 @@ export const loadMoimByInviteCode = async (inviteCode: string) => {
   }
 };
 
-export const createMoim = async (title: string, description: string = ''): Promise<{ id: string, invite_code: string }> => {
+export const createMoim = async (title: string, description: string = ''): Promise<{ id: string, moim_url: string }> => {
   isLoading.set(true);
   error.set(null);
 
@@ -348,7 +348,7 @@ export const createMoim = async (title: string, description: string = ''): Promi
       const { data: existingMoim } = await supabase
         .from('moims')
         .select('id')
-        .eq('invite_code', inviteCode)
+        .eq('moim_url', inviteCode)
         .single();
       
       if (!existingMoim) {
@@ -361,7 +361,7 @@ export const createMoim = async (title: string, description: string = ''): Promi
       .insert({
         title,
         description,
-        invite_code: inviteCode,
+        moim_url: inviteCode,
         creator_id: currentUser.id
       })
       .select()

@@ -26,7 +26,7 @@ CREATE TABLE public.moims (
   title TEXT NOT NULL,
   description TEXT,
   creator_id uuid REFERENCES auth.users NOT NULL,
-  invite_code TEXT UNIQUE,  -- 초대 코드 (URL의 일부로 사용)
+  moim_url TEXT UNIQUE,  -- 초대 코드 (URL의 일부로 사용)
   created_at timestamptz DEFAULT now() NOT NULL,
   updated_at timestamptz DEFAULT now() NOT NULL
 );
@@ -46,7 +46,7 @@ CREATE TABLE public.mannams (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   moim_id uuid REFERENCES public.moims ON DELETE CASCADE NOT NULL,
   creator_id uuid REFERENCES auth.users NOT NULL,
-  sequence_number INTEGER NOT NULL,  -- 모임 내 순차 번호
+  mannam_url INTEGER NOT NULL,  -- 모임 내 순차 번호
   title TEXT NOT NULL,
   description TEXT,
   start_date DATE NOT NULL,  -- 만남 후보 기간 시작일
@@ -62,16 +62,16 @@ CREATE TABLE public.mannams (
     (status = 'confirmed' AND jsonb_array_length(confirmed_slots) > 0) OR
     (status != 'confirmed' AND jsonb_array_length(confirmed_slots) = 0)
   ),
-  UNIQUE(moim_id, sequence_number)  -- 모임 내에서 순차 번호는 유일해야 함
+  UNIQUE(moim_id, mannam_url)  -- 모임 내에서 순차 번호는 유일해야 함
 );
 
 -- 만남 순차 번호 자동 생성 함수
-CREATE OR REPLACE FUNCTION public.generate_mannam_sequence_number()
+CREATE OR REPLACE FUNCTION public.generate_mannam_mannam_url()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- 해당 모임의 가장 큰 sequence_number를 찾아서 +1
-  SELECT COALESCE(MAX(sequence_number), 0) + 1
-  INTO NEW.sequence_number
+  -- 해당 모임의 가장 큰 mannam_url을 찾아서 +1
+  SELECT COALESCE(MAX(mannam_url), 0) + 1
+  INTO NEW.mannam_url
   FROM public.mannams
   WHERE moim_id = NEW.moim_id;
   
@@ -80,11 +80,11 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 만남 생성 시 순차 번호 자동 생성 트리거
-DROP TRIGGER IF EXISTS set_mannam_sequence_number ON public.mannams;
-CREATE TRIGGER set_mannam_sequence_number
+DROP TRIGGER IF EXISTS set_mannam_mannam_url ON public.mannams;
+CREATE TRIGGER set_mannam_mannam_url
   BEFORE INSERT ON public.mannams
   FOR EACH ROW
-  EXECUTE FUNCTION public.generate_mannam_sequence_number();
+  EXECUTE FUNCTION public.generate_mannam_mannam_url();
 
 /* 만남 응답(Mannam Responses) 테이블 */
 CREATE TABLE public.mannam_responses (

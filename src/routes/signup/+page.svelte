@@ -154,7 +154,7 @@
     }
 </script>
 
-<div class="moim-container" in:fly="{{ y: 50, duration: 400, delay: 200 }}" out:fade="{{ duration: 200 }}">
+<div class="moim-container" in:fade={{duration: 200}}>
     <div class="moim-content-wrapper">
         <header class="moim-header">
             <div class="brand-section">

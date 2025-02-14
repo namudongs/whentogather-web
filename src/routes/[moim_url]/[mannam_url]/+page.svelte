@@ -51,7 +51,7 @@
 			// 1. 로그인 상태 확인
 			const { data: sessionData } = await supabase.auth.getSession();
 			if (!sessionData?.session) {
-				await goto(`/${$page.params.invite_code}/invite`);
+				await goto(`/${$page.params.moim_url}/invite`);
 				return;
 			}
 
@@ -64,7 +64,7 @@
 					moim_participants!inner (*)
 				`
 				)
-				.eq('invite_code', $page.params.invite_code)
+				.eq('moim_url', $page.params.moim_url)
 				.single();
 			if (moimError) throw new Error('모임 정보를 불러오는데 실패했습니다.');
 			if (!moimData) throw new Error('모임을 찾을 수 없습니다.');
@@ -74,7 +74,7 @@
 			const { data: mannamData, error: mannamError } = await supabase
 				.from('mannams')
 				.select('*')
-				.eq('sequence_number', $page.params.sequence_number)
+				.eq('mannam_url', $page.params.mannam_url)
 				.eq('moim_id', moim.id)
 				.single();
 			if (mannamError) throw new Error('만남 정보를 불러오는데 실패했습니다.');
@@ -141,7 +141,7 @@
 	}
 
 	async function handleEdit() {
-		await goto(`/${$page.params.invite_code}/${$page.params.sequence_number}/edit`);
+		await goto(`/${$page.params.moim_url}/${$page.params.mannam_url}/edit`);
 	}
 
 	async function handleDelete() {
@@ -152,7 +152,7 @@
 					.update({
 						status: 'pending'
 					})
-					.eq('sequence_number', $page.params.sequence_number)
+					.eq('mannam_url', $page.params.mannam_url)
 					.eq('moim_id', moim.id);
 
 				if (updateError) {
@@ -166,7 +166,7 @@
 						status: 'cancelled',
 						confirmed_slots: []
 					})
-					.eq('sequence_number', $page.params.sequence_number)
+					.eq('mannam_url', $page.params.mannam_url)
 					.eq('moim_id', moim.id);
 
 				if (updateError) {
@@ -177,13 +177,13 @@
 				const { error: deleteError } = await supabase
 					.from('mannams')
 					.delete()
-					.eq('sequence_number', $page.params.sequence_number)
+					.eq('mannam_url', $page.params.mannam_url)
 					.eq('moim_id', moim.id);
 
 				if (deleteError) throw new Error('만남을 삭제하는데 실패했습니다.');
 				
 				// 삭제의 경우에만 모임 목록으로 이동
-				await goto(`/${$page.params.invite_code}`);
+				await goto(`/${$page.params.moim_url}`);
 				return;
 			}
 
@@ -216,7 +216,7 @@
 		<div class="moim-content-wrapper">
 			<header class="moim-header">
 				<div class="header-content">
-					<button class="back-btn font-regular" on:click={() => goto(`/${$page.params.invite_code}`)}>
+					<button class="back-btn font-regular" on:click={() => goto(`/${$page.params.moim_url}`)}>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							width="24"
@@ -337,7 +337,7 @@
 							    정보 수정
 							</button>
 							{#if responses.length > 0}
-								<button class="badge-button confirm" on:click={() => goto(`/${$page.params.invite_code}/${$page.params.sequence_number}/confirm`)}>
+								<button class="badge-button confirm" on:click={() => goto(`/${$page.params.moim_url}/${$page.params.mannam_url}/confirm`)}>
 									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 										<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
 									</svg>
@@ -387,7 +387,7 @@
 						type="button"
 						class="create-btn font-bold"
 						class:responded={myResponse}
-						on:click={() => goto(`/${$page.params.invite_code}/${$page.params.sequence_number}/respond`)}
+						on:click={() => goto(`/${$page.params.moim_url}/${$page.params.mannam_url}/respond`)}
 					>
 						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -998,24 +998,7 @@
 	.avatar-toggle-btn svg {
 		color: currentColor;
 	}
-
-	.status-badge {
-		padding: 0.25rem 0.5rem;
-		border-radius: 9999px;
-		font-size: 0.75rem;
-		margin-left: 0.5rem;
-	}
-
-	.status-badge.cancelled {
-		background-color: #fee2e2;
-		color: #ef4444;
-	}
-
-	.status-badge.confirmed {
-		background-color: #dcfce7;
-		color: #16a34a;
-	}
-
+	
 	.info-item.confirmed {
 		color: #16a34a;
 	}

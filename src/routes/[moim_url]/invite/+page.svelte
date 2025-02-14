@@ -9,9 +9,9 @@
 	import Spinner from '$lib/components/Spinner.svelte';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
 
-	// URL 파라미터에서 초대 코드를 추출 (파일 이름은 [invite_code].svelte 내에 invite 폴더)
+	// URL 파라미터에서 초대 코드를 추출 (파일 이름은 [moim_url].svelte 내에 invite 폴더)
 	let inviteCode = '';
-	$: inviteCode = $page.params.invite_code;
+	$: inviteCode = $page.params.moim_url;
 
 	let loading = true;
 	let errorMessage = '';
@@ -128,8 +128,7 @@
 {:else}
 	<div
 		class="moim-container"
-		in:fly={{ y: 50, duration: 400, delay: 200 }}
-		out:fade={{ duration: 200 }}
+		in:fade={{duration: 200}}
 	>
 		<div class="moim-content-wrapper">
 			<header class="moim-header">

@@ -37,7 +37,7 @@
 			// 1. 로그인 상태 확인
 			const { data: sessionData } = await supabase.auth.getSession();
 			if (!sessionData?.session) {
-				await goto(`/${$page.params.invite_code}/invite`);
+				await goto(`/${$page.params.moim_url}/invite`);
 				return;
 			}
 
@@ -50,7 +50,7 @@
 					moim_participants!inner (*)
 				`
 				)
-				.eq('invite_code', $page.params.invite_code)
+				.eq('moim_url', $page.params.moim_url)
 				.single();
 			if (moimError) throw new Error('모임 정보를 불러오는데 실패했습니다.');
 			if (!moimData) throw new Error('모임을 찾을 수 없습니다.');
@@ -60,7 +60,7 @@
 			const { data: mannamData, error: mannamError } = await supabase
 				.from('mannams')
 				.select('*')
-				.eq('sequence_number', $page.params.sequence_number)
+				.eq('mannam_url', $page.params.mannam_url)
 				.eq('moim_id', moim.id)
 				.single();
 			if (mannamError) throw new Error('만남 정보를 불러오는데 실패했습니다.');
@@ -138,7 +138,7 @@
 			const { data, error: updateError } = await supabase
 				.from('mannams')
 				.update(updateData)
-				.eq('sequence_number', $page.params.sequence_number)
+				.eq('mannam_url', $page.params.mannam_url)
 				.eq('moim_id', moim.id)
 				.select();
 
@@ -151,7 +151,7 @@
 				throw new Error('업데이트할 만남을 찾을 수 없습니다.');
 			}
 
-			await goto(`/${$page.params.invite_code}/${$page.params.sequence_number}`);
+			await goto(`/${$page.params.moim_url}/${$page.params.mannam_url}`);
 		} catch (err) {
 			console.error('시간 확정 중 에러 발생:', err);
 			error = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';

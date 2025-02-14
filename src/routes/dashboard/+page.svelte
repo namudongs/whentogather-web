@@ -77,7 +77,7 @@
 			isCreating = false;
 			closeModal();
 			// 생성된 모임 페이지로 이동 (URL 구조 변경)
-			goto(`/${newMoim.invite_code}`);
+			goto(`/${newMoim.moim_url}`);
 		} catch (error) {
 			isCreating = false;
 			// 에러는 이미 moimError 스토어에 저장됨
@@ -86,7 +86,7 @@
 
 	// 모임 셀 클릭 시, 모임 상세 페이지로 이동하는 함수 (URL 구조 변경)
 	function goToMeetingDetail(meeting: any) {
-		goto(`/${meeting.invite_code}`);
+		goto(`/${meeting.moim_url}`);
 	}
 
 	async function handleUpdateName() {
@@ -127,11 +127,14 @@
 	<div class="global-spinner">
 		<Spinner size="large" />
 	</div>
+{:else if $moimError}
+	<div class="error-container">
+		<ErrorMessage message={$moimError} />
+	</div>
 {:else}
 	<div
 		class="dashboard-container"
-		in:fly={{ y: 50, duration: 400, delay: 200 }}
-		out:fade={{ duration: 200 }}
+		in:fade={{duration: 200}}
 	>
 		<div class="dashboard-content-wrapper">
 			<header class="dashboard-header">
@@ -423,24 +426,6 @@
 		margin-right: 1rem;
 	}
 
-	.user-profile {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.375rem;
-		padding-right: 0.75rem;
-		background: white;
-		border: 1px solid #e5e7eb;
-		border-radius: 2rem;
-		margin-bottom: 1.5rem;
-		transition: all 0.2s ease;
-	}
-
-	.user-profile:hover {
-		border-color: #064b45;
-		box-shadow: 0 0 0 1px rgba(6, 75, 69, 0.1);
-	}
-
 	.avatar {
 		width: 1.75rem;
 		height: 1.75rem;
@@ -455,30 +440,20 @@
 		object-fit: cover;
 	}
 
-	.greeting {
-		font-size: 0.875rem;
-		color: #374151;
-	}
-
 	.sign-out-btn {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
 		padding: 0.5rem 0.75rem;
 		color: #064b45;
-		background: white;
-		border: 1px solid #e5e7eb;
 		font-size: 0.875rem;
 		cursor: pointer;
 		transition: all 0.2s ease;
-		border-radius: 2rem;
 	}
 
 	.sign-out-btn:hover {
-		color: #043430;
+		color: #ef4444;
 		background: rgba(6, 75, 69, 0.02);
-		border-color: #064b45;
-		box-shadow: 0 0 0 1px rgba(6, 75, 69, 0.1);
 	}
 
 	.dashboard-content {

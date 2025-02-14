@@ -29,7 +29,7 @@
 			// 1) 로그인 상태 확인
 			const { data: sessionData } = await supabase.auth.getSession();
 			if (!sessionData?.session) {
-				await goto(`/${$page.params.invite_code}/invite`);
+				await goto(`/${$page.params.moim_url}/invite`);
 				return;
 			}
 
@@ -42,7 +42,7 @@
           moim_participants!inner (*)
         `
 				)
-				.eq('invite_code', $page.params.invite_code)
+				.eq('moim_url', $page.params.moim_url)
 				.single();
 
 			if (moimError) throw moimError;
@@ -87,22 +87,22 @@
 					time_slot_minutes: mannamTimeSlotMinutes,
 					status: 'pending'
 				})
-				.select('*, moims!inner(invite_code)')
+				.select('*, moims!inner(moim_url)')
 				.single();
 
 			if (err) throw err;
 			
-			// sequence_number를 가져오기 위한 추가 쿼리
+			// mannam_url를 가져오기 위한 추가 쿼리
 			const { data: createdMannam, error: seqErr } = await supabase
 				.from('mannams')
-				.select('sequence_number')
+				.select('mannam_url')
 				.eq('id', mannam.id)
 				.single();
 			
 			if (seqErr) throw seqErr;
 			
 			// 새로운 URL 구조로 리다이렉트
-			await goto(`/${$page.params.invite_code}/${createdMannam.sequence_number}`, { replaceState: true });
+			await goto(`/${$page.params.moim_url}/${createdMannam.mannam_url}`, { replaceState: true });
 		} catch (err) {
 			mannamError = err instanceof Error ? err.message : '만남을 생성하는 중에 오류가 발생했습니다.';
 		}

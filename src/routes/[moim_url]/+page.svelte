@@ -43,7 +43,7 @@
 
 	// URL 파라미터에서 초대 코드를 추출
 	let inviteCode = '';
-	$: inviteCode = $page.params.invite_code;
+	$: inviteCode = $page.params.moim_url;
 
 	// 만남 생성 폼 데이터
 	let mannamTitle = '';
@@ -99,7 +99,7 @@
 		const initializePage = async () => {
 			try {
 				loading = true;
-				// 1) 로그인 상태 확인: 세션이 없으면 /moim/[invite_code]/invite 페이지로 리다이렉트
+				// 1) 로그인 상태 확인: 세션이 없으면 /moim/[moim_url]/invite 페이지로 리다이렉트
 				const { data: sessionData } = await supabase.auth.getSession();
 				if (!sessionData?.session) {
 					await goto(`/moim/${inviteCode}/invite`);
@@ -115,11 +115,11 @@
 				// 초대 페이지에서 왔다면 자동으로 참여
 				const fromInvite = isComingFromInvite();
 
-				// 2) 모임 정보 조회 (invite_code로 조회)
+				// 2) 모임 정보 조회 (moim_url로 조회)
 				const { data: moimData, error: moimError } = await supabase
 					.from('moims')
 					.select('*')
-					.eq('invite_code', inviteCode)
+					.eq('moim_url', inviteCode)
 					.maybeSingle();
 				if (moimError) {
 					errorMessage = moimError.message || '모임 정보를 불러오지 못했습니다.';
@@ -291,7 +291,7 @@
 	}
 
 	function goToCreateMannam() {
-		goto(`/${$page.params.invite_code}/create`);
+		goto(`/${$page.params.moim_url}/create`);
 	}
 
 	function openCreateMannamSheet() {
@@ -550,7 +550,7 @@
 							{#if mannams.length > 0}
 								<div class="mannams-grid">
 									{#each mannams as mannam}
-										<a href="/{inviteCode}/{mannam.sequence_number}" class="mannam-card">
+										<a href="/{inviteCode}/{mannam.mannam_url}" class="mannam-card">
 											<div class="mannam-status-indicator" class:pending={mannam.status === 'pending'} class:confirmed={mannam.status === 'confirmed'}></div>
 											<div class="mannam-content">
 												<h3 class="mannam-title font-bold">{mannam.title}</h3>

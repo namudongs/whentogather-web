@@ -11,7 +11,7 @@ export interface Moim {
   title: string;
   description: string;
   creator_id: string;
-  invite_code: string;
+  moim_url: string;
   created_at: string;
 }
 
