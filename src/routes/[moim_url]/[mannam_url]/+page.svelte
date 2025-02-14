@@ -600,7 +600,6 @@
 		top: 0;
 		background: white;
 		padding-bottom: 0.5rem;
-		border-bottom: 1px solid #e5e7eb;
 		margin-bottom: 1.25rem;
 		z-index: 100;
 	}
@@ -682,7 +681,6 @@
 
 	.meta-divider {
 		margin: 0 0 1rem;
-		border-bottom: 1px solid #e5e7eb;
 	}
 
 	.meta {
@@ -817,10 +815,8 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;
-		padding-top: 1rem;
-		border-top: 1px solid #e5e7eb;
 	}
-
+	
 	.badge-button {
 		display: flex;
 		align-items: center;
