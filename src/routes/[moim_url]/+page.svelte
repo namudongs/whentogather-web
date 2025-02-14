@@ -654,7 +654,7 @@
 											<div class="mannam-status-indicator" class:confirmed={mannam.status === 'confirmed'} class:cancelled={mannam.status === 'cancelled'}></div>
 											<div class="mannam-content">
 												<h3 class="mannam-title font-bold">
-													<span class="mannam-status-badge font-regular" class:confirmed={mannam.status === 'confirmed'} class:cancelled={mannam.status === 'cancelled'}>
+													<span class="mannam-status-badge font-" class:confirmed={mannam.status === 'confirmed'} class:cancelled={mannam.status === 'cancelled'}>
 														{#if mannam.status === 'confirmed'}
 															<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 																<path d="M20 6L9 17l-5-5"></path>

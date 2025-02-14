@@ -74,10 +74,18 @@
 		// 오늘 이전의 날짜는 선택 불가능
 		if (date < today) return true;
 		
-		if (!selectedStartDate || selectedEndDate) return false;
+		if (selectedStartDate && !selectedEndDate) {
+			const maxEndDate = new Date(selectedStartDate);
+			maxEndDate.setDate(maxEndDate.getDate() + 7); // 시작일로부터 7일 후까지 (시작일 포함 8일째)
+			
+			const minStartDate = new Date(selectedStartDate);
+			minStartDate.setDate(minStartDate.getDate() - 7); // 시작일로부터 7일 전까지 (시작일 포함 8일째)
+			
+			// 시작일로부터 앞뒤로 7일 범위를 벗어나는 날짜는 선택 불가능
+			if (date > maxEndDate || date < minStartDate) return true;
+		}
 		
-		const diffDays = Math.floor(Math.abs(date.getTime() - selectedStartDate.getTime()) / (1000 * 60 * 60 * 24));
-		return diffDays > maxRange;
+		return false;
 	}
 
 	function handleDateClick(date: Date) {
@@ -90,18 +98,30 @@
 		} else {
 			// 범위 완성
 			if (date < selectedStartDate) {
-				// 선택한 날짜가 시작일보다 이전인 경우
-				startDate = formatDate(date);
-				endDate = formatDate(selectedStartDate);
-				selectedEndDate = selectedStartDate;
-				selectedStartDate = date;
+				// 시작일보다 이전 날짜 선택 시
+				const diffDays = Math.floor((selectedStartDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+				
+				if (diffDays > 7) { // 7일을 초과하는 경우
+					// 시작일로부터 정확히 7일 전을 시작일로 설정
+					const minStartDate = new Date(selectedStartDate);
+					minStartDate.setDate(minStartDate.getDate() - 7);
+					startDate = formatDate(minStartDate);
+					endDate = formatDate(selectedStartDate);
+					selectedEndDate = selectedStartDate;
+					selectedStartDate = minStartDate;
+				} else {
+					startDate = formatDate(date);
+					endDate = formatDate(selectedStartDate);
+					selectedEndDate = selectedStartDate;
+					selectedStartDate = date;
+				}
 			} else {
 				const diffDays = Math.floor((date.getTime() - selectedStartDate.getTime()) / (1000 * 60 * 60 * 24));
 				
-				if (diffDays > maxRange) {
-					// maxRange를 초과하는 경우
+				if (diffDays > 7) { // 7일을 초과하는 경우
+					// 시작일로부터 정확히 7일 후를 종료일로 설정
 					const maxEndDate = new Date(selectedStartDate);
-					maxEndDate.setDate(maxEndDate.getDate() + maxRange);
+					maxEndDate.setDate(maxEndDate.getDate() + 7);
 					endDate = formatDate(maxEndDate);
 					selectedEndDate = maxEndDate;
 				} else {
@@ -111,6 +131,8 @@
 			}
 			isOpen = false;
 		}
+		
+		dispatch('dateSelect', { startDate, endDate });
 	}
 
 	function handleMouseEnter(date: Date) {

@@ -542,116 +542,122 @@
 	</form>
 </BottomSheet>
 
-{#if showNameSheet}
-	<BottomSheet show={showNameSheet} onClose={() => {}} title="이름 설정" blurBackground={true} showCloseButton={false}>
-		<form on:submit|preventDefault={handleUpdateName} class="create-form">
-			<div class="form-group">
-				<label for="name" class="font-bold">이름</label>
-				<input
-					id="name"
-					type="text"
-					bind:value={userName}
-					placeholder="이름을 입력해 주세요"
-					class="form-input font-regular"
-				/>
-				<p class="help-text font-regular">다른 사용자에게 표시될 이름입니다.</p>
-			</div>
-			<div class="form-actions">
-				<Button
-					variant="primary"
-					type="submit"
-					disabled={isUpdatingName}
-					loading={isUpdatingName}
-					flex={1}
-					class="font-bold"
-				>
-					저장하기
-				</Button>
-			</div>
-		</form>
-	</BottomSheet>
-{/if}
+<BottomSheet 
+	show={showNameSheet} 
+	onClose={() => {}} 
+	title="이름 설정" 
+	blurBackground={true} 
+	showCloseButton={false}
+>
+	<form on:submit|preventDefault={handleUpdateName} class="create-form">
+		<div class="form-group">
+			<label for="name" class="font-bold">이름</label>
+			<input
+				id="name"
+				type="text"
+				bind:value={userName}
+				placeholder="이름을 입력해 주세요"
+				class="form-input font-regular"
+			/>
+			<p class="help-text font-regular">다른 사용자에게 표시될 이름입니다.</p>
+		</div>
+		<div class="form-actions">
+			<Button
+				variant="primary"
+				type="submit"
+				disabled={isUpdatingName}
+				loading={isUpdatingName}
+				flex={1}
+				class="font-bold"
+			>
+				저장하기
+			</Button>
+		</div>
+	</form>
+</BottomSheet>
 
-{#if showProfileSheet}
-	<BottomSheet show={showProfileSheet} onClose={() => (showProfileSheet = false)} title="프로필 설정">
-		<form on:submit|preventDefault={handleUpdateProfile} class="create-form">
-			<div class="form-group">
-				<label for="profile-avatar" class="font-bold">프로필 사진</label>
-				<div id="profile-avatar" class="avatar-selection">
-					<div class="current-avatar">
-						<div class="avatar-option selected">
-							<img
-								src={`https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(avatarOptions[selectedAvatarIndex])}&backgroundColor=b6e3d4`}
-								alt="현재 프로필 아바타"
-							/>
-						</div>
+<BottomSheet 
+	show={showProfileSheet} 
+	onClose={() => (showProfileSheet = false)} 
+	title="프로필 설정"
+>
+	<form on:submit|preventDefault={handleUpdateProfile} class="create-form">
+		<div class="form-group">
+			<label for="profile-avatar" class="font-bold">프로필 사진</label>
+			<div id="profile-avatar" class="avatar-selection">
+				<div class="current-avatar">
+					<div class="avatar-option selected">
+						<img
+							src={`https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(avatarOptions[selectedAvatarIndex])}&backgroundColor=b6e3d4`}
+							alt="현재 프로필 아바타"
+						/>
 					</div>
-					<div class="avatar-candidates">
-						<div class="candidates-header">
-							<span class="font-regular">다른 후보</span>
+				</div>
+				<div class="avatar-candidates">
+					<div class="candidates-header">
+						<span class="font-regular">다른 후보</span>
+						<button
+							type="button"
+							class="refresh-button font-regular"
+							on:click={refreshAvatarOptions}
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
+							</svg>
+							새로 고치기
+						</button>
+					</div>
+					<div class="avatar-grid">
+						{#each avatarOptions.slice(1) as seed, i}
 							<button
 								type="button"
-								class="refresh-button font-regular"
-								on:click={refreshAvatarOptions}
+								class="avatar-option"
+								class:selected={i + 1 === selectedAvatarIndex}
+								on:click={() => selectAvatar(i + 1)}
 							>
-								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-									<path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
-								</svg>
-								새로 고치기
+								<img
+									src={`https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3d4`}
+									alt="프로필 아바타 옵션"
+								/>
 							</button>
-						</div>
-						<div class="avatar-grid">
-							{#each avatarOptions.slice(1) as seed, i}
-								<button
-									type="button"
-									class="avatar-option"
-									class:selected={i + 1 === selectedAvatarIndex}
-									on:click={() => selectAvatar(i + 1)}
-								>
-									<img
-										src={`https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3d4`}
-										alt="프로필 아바타 옵션"
-									/>
-								</button>
-							{/each}
-						</div>
+						{/each}
 					</div>
 				</div>
 			</div>
-			<div class="form-group">
-				<label for="name" class="font-bold">이름</label>
-				<input
-					id="name"
-					type="text"
-					bind:value={userName}
-					placeholder="이름을 입력해 주세요"
-					class="form-input font-regular"
-				/>
-				<p class="help-text font-regular">다른 사용자에게 표시될 이름입니다.</p>
-			</div>
-			<div class="form-actions">
-				<Button 
-					variant="outline" 
-					on:click={() => (showProfileSheet = false)} 
-					flex={1} 
-					class="font-regular"
-				>
-					취소
-				</Button>
-				<Button
-					variant="primary"
-					type="submit"
-					disabled={isUpdatingProfile}
-					loading={isUpdatingProfile}
-					flex={2}
-					class="font-bold"
-				>
-					저장하기
-				</Button>
-			</div>
-		</form>
-	</BottomSheet>
-{/if}
+		</div>
+		<div class="form-group">
+			<label for="name" class="font-bold">이름</label>
+			<input
+				id="name"
+				type="text"
+				bind:value={userName}
+				placeholder="이름을 입력해 주세요"
+				class="form-input font-regular"
+			/>
+			<p class="help-text font-regular">다른 사용자에게 표시될 이름입니다.</p>
+		</div>
+		<div class="form-actions">
+			<Button 
+				variant="outline" 
+				on:click={() => (showProfileSheet = false)} 
+				flex={1} 
+				class="font-regular"
+			>
+				취소
+			</Button>
+			<Button
+				variant="primary"
+				type="submit"
+				disabled={isUpdatingProfile}
+				loading={isUpdatingProfile}
+				flex={2}
+				class="font-bold"
+			>
+				저장하기
+			</Button>
+		</div>
+	</form>
+</BottomSheet>
 
 <style>
 	:global(body) {
@@ -707,13 +713,15 @@
 
 	.header-content {
 		display: flex;
+		justify-content: space-between;
 		align-items: center;
-		gap: 0.75rem;
+		max-width: 500px;
+		width: 100%;
 		padding: 0 0.5rem;
 	}
 
 	.logo-container {
-		margin-right: 1rem;
+		margin-right: 0;
 	}
 
 	.avatar {

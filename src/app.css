@@ -19,106 +19,172 @@ body {
     padding: 1.5rem;
 }
 
+/* 프리텐다드 폰트 설정 */
 @font-face {
-    font-family: 'NanumSquareNeoLight';
-    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-aLt.eot);
-    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-aLt.eot?#iefix) format("embedded-opentype"),
-         url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-aLt.woff) format("woff"),
-         url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-aLt.ttf) format("truetype");
+    font-family: 'PretendardRegular';
+    src: local('Pretendard Regular'),
+         url('/fonts/pretendard/Pretendard-Regular.woff') format('woff');
+    font-display: swap;
 }
 
 @font-face {
+    font-family: 'PretendardLight';
+    src: local('Pretendard Light'),
+         url('/fonts/pretendard/Pretendard-Light.woff') format('woff');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PretendardMedium';
+    src: local('Pretendard Medium'),
+         url('/fonts/pretendard/Pretendard-Medium.woff') format('woff');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PretendardBold';
+    src: local('Pretendard Bold'),
+         url('/fonts/pretendard/Pretendard-Bold.woff') format('woff');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'PretendardExtraBold';
+    src: local('Pretendard ExtraBold'),
+         url('/fonts/pretendard/Pretendard-ExtraBold.woff') format('woff');
+    font-display: swap;
+}
+
+/* 나눔스퀘어 네오 폰트 설정 */
+@font-face {
     font-family: 'NanumSquareNeo';
-    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-bRg.eot);
-    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-bRg.eot?#iefix) format("embedded-opentype"),
-         url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-bRg.woff) format("woff"),
-         url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-bRg.ttf) format("truetype");
+    src: local('NanumSquareNeo'),
+         url('/fonts/nanumsqure_neo/NanumSquareNeoTTF-bRg.woff') format('woff');
+    font-display: swap;
 }
 
 @font-face {
     font-family: 'NanumSquareNeoBold';
-    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-cBd.eot);
-    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-cBd.eot?#iefix) format("embedded-opentype"),
-         url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-cBd.woff) format("woff"),
-         url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-cBd.ttf) format("truetype");
+    src: local('NanumSquareNeoBold'),
+         url('/fonts/nanumsqure_neo/NanumSquareNeoTTF-cBd.woff') format('woff');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'NanumSquareNeoLight';
+    src: local('NanumSquareNeoLight'),
+         url('/fonts/nanumsqure_neo/NanumSquareNeoTTF-aLt.woff') format('woff');
+    font-display: swap;
 }
 
 @font-face {
     font-family: 'NanumSquareNeoExtraBold';
-    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-dEb.eot);
-    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-dEb.eot?#iefix) format("embedded-opentype"),
-         url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-dEb.woff) format("woff"),
-         url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-dEb.ttf) format("truetype");
+    src: local('NanumSquareNeoExtraBold'),
+         url('/fonts/nanumsqure_neo/NanumSquareNeoTTF-dEb.woff') format('woff');
+    font-display: swap;
 }
 
 @font-face {
     font-family: 'NanumSquareNeoHeavy';
-    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-eHv.eot);
-    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-eHv.eot?#iefix) format("embedded-opentype"),
-         url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-eHv.woff) format("woff"),
-         url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeoTTF-eHv.ttf) format("truetype");
+    src: local('NanumSquareNeoHeavy'),
+         url('/fonts/nanumsqure_neo/NanumSquareNeoTTF-eHv.woff') format('woff');
+    font-display: swap;
+}
+
+/* 나눔고딕 폰트 설정 */
+@font-face {
+    font-family: 'NanumGothic';
+    src: local('NanumGothic'),
+         url('/fonts/nanumgothic/NanumGothic.otf') format('opentype');
+    font-display: swap;
 }
 
 @font-face {
-    font-family: 'NanumSquareNeoVariable';
-    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeo-Variable.eot);
-    src: url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeo-Variable.eot?#iefix) format("embedded-opentype"),
-         url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeo-Variable.woff) format("woff"),
-         url(https://hangeul.pstatic.net/hangeul_static/webfont/NanumSquareNeo/NanumSquareNeo-Variable.ttf) format("truetype");
+    font-family: 'NanumGothicLight';
+    src: local('NanumGothicLight'),
+         url('/fonts/nanumgothic/NanumGothicLight.otf') format('opentype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'NanumGothicBold';
+    src: local('NanumGothicBold'),
+         url('/fonts/nanumgothic/NanumGothicBold.otf') format('opentype');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'NanumGothicExtraBold';
+    src: local('NanumGothicExtraBold'),
+         url('/fonts/nanumgothic/NanumGothicExtraBold.otf') format('opentype');
+    font-display: swap;
 }
 
 /* 기본 폰트 설정 */
 :root {
-    --main-font: 'NanumSquareNeo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    /* 나눔스퀘어 네오 설정 */
+    --main-font: 'NanumSquareNeoLight', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', sans-serif;
     --font-light: 'NanumSquareNeoLight';
-    --font-regular: 'NanumSquareNeo';
-    --font-bold: 'NanumSquareNeoBold';
-    --font-extrabold: 'NanumSquareNeoExtraBold';
-    --font-heavy: 'NanumSquareNeoHeavy';
+    --font-regular: 'NanumSquareNeoLight';
+    --font-bold: 'NanumSquareNeo';
+    --font-extrabold: 'NanumSquareNeo';
+    --font-heavy: 'NanumSquareNeo';
+
+    /* 프리텐다드 설정 (주석 해제하여 사용) */
     /*
-    --main-font: 'Pretendard Variable', Pretendard, Roboto, 'Noto Sans KR', 'Segoe UI', 'Malgun Gothic', sans-serif;
-    --font-light: 'Pretendard Variable';
-    --font-regular: 'Pretendard Variable';
-    --font-bold: 'Pretendard Variable';
-    --font-extrabold: 'Pretendard Variable';
-    --font-heavy: 'Pretendard Variable';
+    --main-font: 'PretendardRegular', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', sans-serif;
+    --font-light: 'PretendardLight';
+    --font-regular: 'PretendardRegular';
+    --font-bold: 'PretendardBold';
+    --font-extrabold: 'PretendardBold';
+    --font-heavy: 'PretendardBold';
     */
-  }
-  
-  body, html {
-    font-family: var(--main-font);
-  }
-  
-  .font-light {
-    font-family: var(--font-light);
-  }
-  
-  .font-regular {
-    font-family: var(--font-regular);
-  }
-  
-  .font-bold {
-    font-family: var(--font-bold);
-  }
-  
-  .font-extrabold {
-    font-family: var(--font-extrabold);
-  }
-  
-  .font-heavy {
-    font-family: var(--font-heavy);
-  }
-  
-  /* 헤딩 스타일 */
-  h1 {
-    font-family: var(--font-extrabold);
-  }
-  
-  h2 {
-    font-family: var(--font-bold);
-  }
-  
-  h3 {
-    font-family: var(--font-regular);
-    font-weight: bold;
-  }
+
+    /* 나눔고딕 설정 (주석 해제하여 사용) */
+    /*
+    --main-font: 'NanumGothic', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', sans-serif;
+    --font-light: 'NanumGothicLight';
+    --font-regular: 'NanumGothic';
+    --font-bold: 'NanumGothicBold';
+    --font-extrabold: 'NanumGothicBold';
+    --font-heavy: 'NanumGothicBold';
+    */
+}
+
+body, html {
+  font-family: var(--main-font);
+}
+
+.font-light {
+  font-family: var(--font-light);
+}
+
+.font-regular {
+  font-family: var(--font-regular);
+}
+
+.font-bold {
+  font-family: var(--font-bold);
+}
+
+.font-extrabold {
+  font-family: var(--font-extrabold);
+}
+
+.font-heavy {
+  font-family: var(--font-heavy);
+}
+
+/* 헤딩 스타일 */
+h1 {
+  font-family: var(--font-extrabold);
+}
+
+h2 {
+  font-family: var(--font-bold);
+}
+
+h3 {
+  font-family: var(--font-regular);
+  font-weight: bold;
+}

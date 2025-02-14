@@ -38,9 +38,12 @@
     // 날짜 배열 생성
     const start = new Date(startDate);
     const end = new Date(endDate);
+    const maxEnd = new Date(start);
+    maxEnd.setDate(maxEnd.getDate() + 6); // 시작일로부터 6일 후까지 (총 7일)
+    
     dates = [];
     let current = start;
-    while (current <= end) {
+    while (current <= (end > maxEnd ? maxEnd : end)) {
       dates.push(new Date(current));
       current = addDays(current, 1);
     }
@@ -218,7 +221,10 @@
 </script>
 
 <div class="time-grid" bind:this={gridElement}>
-  <div class="grid-header">
+  <div 
+    class="grid-header"
+    style="grid-template-columns: 2.5rem repeat({dates.length}, minmax(2rem, 1fr));"
+  >
     <div class="time-column-header"></div>
     {#each dates as date}
       <div class="date-column-header">
@@ -229,7 +235,10 @@
   </div>
   <div class="grid-body">
     {#each timeSlots as slot}
-      <div class="time-row">
+      <div 
+        class="time-row"
+        style="grid-template-columns: 2.5rem repeat({dates.length}, minmax(2rem, 1fr));"
+      >
         <div class="time-label">{slot}</div>
         {#each dates as date}
           {@const formattedDate = format(date, 'yyyy-MM-dd')}
@@ -294,6 +303,7 @@
   .time-grid {
     width: 100%;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     background: white;
     border: 1px solid #e5e7eb;
     border-radius: 0.5rem;
@@ -301,16 +311,16 @@
 
   .grid-header {
     display: grid;
-    grid-template-columns: 4rem repeat(auto-fit, minmax(3rem, 1fr));
     border-bottom: 1px solid #e5e7eb;
     position: sticky;
     top: 0;
     background: white;
     z-index: 10;
+    min-width: fit-content;
   }
 
   .time-column-header {
-    padding: 0.5rem;
+    padding: 0.25rem;
     text-align: center;
     font-size: 0.75rem;
     color: #6b7280;
@@ -319,23 +329,25 @@
   }
 
   .date-column-header {
-    padding: 0.5rem;
-    text-align: center;
+    padding: 0.25rem;
     font-size: 0.75rem;
     color: #6b7280;
     border-right: 1px solid #e5e7eb;
     display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.125rem;
+    justify-content: center;
+    flex-direction: row;
+    align-items: center;
   }
 
   .date-label {
     font-weight: 500;
+    font-size: 0.75rem;
   }
 
   .date-number {
-    font-size: 0.875rem;
     color: #374151;
+    font-size: 0.75rem;
   }
 
   .grid-body {
@@ -345,8 +357,8 @@
 
   .time-row {
     display: grid;
-    grid-template-columns: 4rem repeat(auto-fit, minmax(3rem, 1fr));
     border-bottom: 1px solid #e5e7eb;
+    min-width: fit-content;
   }
 
   .time-row:last-child {
@@ -354,9 +366,9 @@
   }
 
   .time-label {
-    padding: 0.5rem;
+    padding: 0.25rem;
     text-align: center;
-    font-size: 0.75rem;
+    font-size: 0.6rem;
     color: #6b7280;
     border-right: 1px solid #e5e7eb;
     display: flex;
@@ -366,7 +378,6 @@
 
   .time-slot {
     position: relative;
-    padding: 0.25rem;
     border: none;
     border-right: 1px solid #e5e7eb;
     background: none;
@@ -375,9 +386,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 2.5rem;
-    height: 2.5rem;
+    min-height: 2rem;
+    height: 2rem;
     user-select: none;
+    touch-action: none;
   }
 
   .time-slot:last-child {
@@ -465,5 +477,46 @@
     background: rgba(255, 255, 255, 0.1);
   }
 
+  @media (max-width: 400px) {
+    .time-slot {
+      min-height: 1.5rem;
+      height: 1.5rem;
+      padding: 0.125rem;
+    }
+
+    .time-label {
+      padding: 0.125rem;
+      font-size: 0.5rem;
+    }
+
+    .date-column-header {
+      padding: 0.125rem;
+      gap: 0.125rem;
+      font-size: 0.5rem;
+      align-items: center;
+    }
+
+    .date-label {
+      font-size: 0.5rem;
+    }
+
+    .date-number {
+      font-size: 0.5rem;
+    }
+
+    .time-column-header {
+      font-size: 0.5rem;
+    }
+
+    .respondent-wrapper :global(.participant-badge .avatar) {
+      width: 16px !important;
+      height: 16px !important;
+    }
+
+    .time-slot.confirmed svg {
+      width: 1rem;
+      height: 1rem;
+    }
+  }
 </style>
 
