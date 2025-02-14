@@ -356,30 +356,32 @@
 				</section>
 
 				<!-- 응답자 섹션 -->
-				<section class="moim-section">
-					<div class="section-header">
-						<div class="title-with-badge">
-							<h2 class="section-title font-bold">응답자</h2>
-							<div class="count-badge font-regular">
-								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-									<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-									<circle cx="9" cy="7" r="4"></circle>
-									<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-									<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-								</svg>
-								{responses.length}명
+				{#if responses.length > 0}
+					<section class="moim-section">
+						<div class="section-header">
+							<div class="title-with-badge">
+								<h2 class="section-title font-bold">응답자</h2>
+								<div class="count-badge font-regular">
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+										<circle cx="9" cy="7" r="4"></circle>
+										<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+										<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+									</svg>
+									{responses.length}명
+								</div>
 							</div>
 						</div>
-					</div>
-					<div class="participants-grid">
-						{#each responses as response}
-							<ParticipantAvatar
-								name={response.user?.name || '이름없음'}
-								role="participant"
-							/>
-						{/each}
-					</div>
-				</section>
+						<div class="participants-grid">
+							{#each responses as response}
+								<ParticipantAvatar
+									name={response.user?.name || '이름없음'}
+									role="participant"
+								/>
+							{/each}
+						</div>
+					</section>
+				{/if}
 
 				<!-- 응답하기 버튼 섹션 -->
 				<section class="response-button-section">

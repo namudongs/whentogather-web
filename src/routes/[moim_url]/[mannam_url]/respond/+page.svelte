@@ -23,12 +23,10 @@
 		slot: string;
 	}
 	let selectedSlots: TimeSlot[] = [];
-	let comment = '';
 	let myResponse: any = null;
 
 	// 백업용 상태 (취소 시 복원)
 	let originalSlots: TimeSlot[] = [];
-	let originalComment = '';
 
 	onMount(loadData);
 
@@ -85,11 +83,9 @@
 				selectedSlots = Array.isArray(responseData.available_slots)
 					? responseData.available_slots
 					: JSON.parse(responseData.available_slots || '[]');
-				comment = responseData.comment || '';
 				
 				// 백업
 				originalSlots = [...selectedSlots];
-				originalComment = comment;
 			}
 		} catch (err) {
 			console.error('데이터 로드 중 에러 발생:', err);
@@ -120,8 +116,7 @@
 				const responseData = {
 					mannam_id: mannam.id,
 					user_id: $user.id,
-					available_slots: selectedSlots,
-					comment: comment.trim()
+					available_slots: selectedSlots
 				};
 
 				if (myResponse) {
@@ -156,10 +151,8 @@
 		// 기존 응답이 있었다면 원래 상태로 복원
 		if (myResponse) {
 			selectedSlots = [...originalSlots];
-			comment = originalComment;
 		} else {
 			selectedSlots = [];
-			comment = '';
 		}
 		history.back();
 	}
@@ -221,21 +214,6 @@
 								readOnly={false}
 								on:change={handleSlotsChange}
 							/>
-						</div>
-					</section>
-
-					<!-- 코멘트 섹션 -->
-					<section class="moim-section">
-						<div class="section-header">
-							<h2 class="section-title font-bold">코멘트 (선택)</h2>
-						</div>
-						<div class="form-group">
-							<textarea
-								bind:value={comment}
-								placeholder="추가로 전달하고 싶은 내용이 있다면 작성해주세요."
-								class="form-input font-regular"
-								rows="4"
-							></textarea>
 						</div>
 					</section>
 
@@ -357,11 +335,6 @@
 	.response-form {
 		display: flex;
 		flex-direction: column;
-		gap: 2rem;
-	}
-
-	.moim-section {
-		margin-bottom: 1rem;
 	}
 
 	.section-header {
@@ -381,42 +354,9 @@
 		margin-bottom: 1.5rem;
 	}
 
-	.form-group {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.form-input {
-		width: 100%;
-		padding: 0.625rem;
-		border: 1px solid #d1d5db;
-		border-radius: 0.5rem;
-		font-size: 0.875rem;
-		color: #111827;
-		transition: all 0.2s;
-	}
-
-	.form-input:focus {
-		outline: none;
-		border-color: #064b45;
-		box-shadow: 0 0 0 2px rgba(6, 75, 69, 0.1);
-	}
-
-	.form-input::placeholder {
-		color: #9ca3af;
-	}
-
-	textarea.form-input {
-		resize: vertical;
-		min-height: 80px;
-	}
-
 	.form-actions {
 		display: flex;
 		gap: 0.75rem;
-		margin-top: 0.5rem;
 		padding: 1rem 0;
-		border-top: 1px solid #e5e7eb;
 	}
 </style> 

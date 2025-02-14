@@ -6,6 +6,7 @@
   export let onClose: () => void;
   export let title = '';
   export let blurBackground = false;
+  export let showCloseButton = true;
 </script>
 
 {#if show}
@@ -26,12 +27,14 @@
         {#if title}
           <h2>{title}</h2>
         {/if}
-        <button class="close-button" on:click={onClose} aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+        {#if showCloseButton}
+          <button class="close-button" on:click={onClose} aria-label="Close">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        {/if}
       </div>
       <div class="bottom-sheet-content">
         <slot />

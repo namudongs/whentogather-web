@@ -21,7 +21,9 @@
 	let participants: any[] = [];
 	let mannams: any[] = [];
 	let errorMessage = '';
-	let loading = true;
+	let loading = false;
+	let showInitialSpinner = true;
+	let isJoining = false;
 	let showNameSheet = false;
 	let userName = '';
 	let isUpdatingName = false;
@@ -91,18 +93,22 @@
 
 	// 이전 페이지가 초대 페이지인지 확인
 	function isComingFromInvite() {
-		return document.referrer.includes(`/moim/${inviteCode}/invite`);
+		return document.referrer.includes(`/${inviteCode}/invite`);
 	}
 
 	/*** 페이지 초기화 ***/
 	onMount(() => {
+		setTimeout(() => {
+			showInitialSpinner = false;
+		}, 300);
+
 		const initializePage = async () => {
 			try {
 				loading = true;
-				// 1) 로그인 상태 확인: 세션이 없으면 /moim/[moim_url]/invite 페이지로 리다이렉트
+				// 1) 로그인 상태 확인: 세션이 없으면 /[moim_url]/invite 페이지로 리다이렉트
 				const { data: sessionData } = await supabase.auth.getSession();
 				if (!sessionData?.session) {
-					await goto(`/moim/${inviteCode}/invite`);
+					await goto(`/${inviteCode}/invite`);
 					return;
 				}
 				$user = sessionData.session.user;
@@ -210,8 +216,9 @@
 						}
 					)
 					.subscribe();
-			} catch (err) {
-				errorMessage = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
+			} catch (error) {
+				console.error('Failed to initialize page:', error);
+				errorMessage = '페이지를 불러오는 중 오류가 발생했습니다.';
 			} finally {
 				loading = false;
 			}
@@ -233,7 +240,7 @@
 	}
 
 	function copyInviteLink() {
-		const inviteLink = `${window.location.origin}/moim/${inviteCode}/invite`;
+		const inviteLink = `${window.location.origin}/${inviteCode}/invite`;
 		navigator.clipboard.writeText(inviteLink);
 		toastMessage = '초대 링크가 복사되었습니다';
 		toastType = 'success';
@@ -338,6 +345,7 @@
 			return;
 		}
 		try {
+			isJoining = true;
 			const { data: insertedParticipants, error: insertError } = await supabase
 				.from('moim_participants')
 				.insert({ moim_id: moim.id, user_id: $user.id, role: 'participant' })
@@ -353,36 +361,47 @@
 		} catch (err) {
 			errorMessage =
 				err instanceof Error ? err.message : '참여 처리 중 알 수 없는 오류가 발생했습니다.';
+		} finally {
+			isJoining = false;
 		}
 	}
 
 	async function handleUpdateName() {
-		if (!userName.trim()) return;
+		if (!userName.trim() || !$user) return;
 
 		try {
 			isUpdatingName = true;
-			const { error } = await supabase.auth.updateUser({
+
+			// 1. Auth 메타데이터 업데이트
+			const { error: authError } = await supabase.auth.updateUser({
 				data: { name: userName.trim() }
 			});
 
-			if (error) throw error;
+			if (authError) throw authError;
 
-			// 스토어의 사용자 정보도 업데이트
-			if ($user) {
-				$user = {
-					...$user,
-					user_metadata: {
-						...$user.user_metadata,
-						name: userName.trim()
-					}
-				};
-			}
+			// 2. 프로필 테이블 업데이트
+			const { error: profileError } = await supabase
+				.from('profiles')
+				.update({ name: userName.trim() })
+				.eq('id', $user.id);
+
+			if (profileError) throw profileError;
+
+			// 3. 로컬 상태 업데이트
+			$user = {
+				...$user,
+				user_metadata: {
+					...$user.user_metadata,
+					name: userName.trim()
+				}
+			} as typeof $user;
 
 			showNameSheet = false;
 			toastMessage = '이름이 저장되었습니다';
 			toastType = 'success';
 			showToast = true;
 		} catch (err) {
+			console.error('Failed to update name:', err);
 			toastMessage = '이름 저장에 실패했습니다';
 			toastType = 'error';
 			showToast = true;
@@ -390,10 +409,16 @@
 			isUpdatingName = false;
 		}
 	}
+
+	$: title = $moim ? `${$moim.name} - 언제모여` : '언제모여';
 </script>
 
-{#if loading}
-	<div class="global-spinner">
+<svelte:head>
+	<title>{title}</title>
+</svelte:head>
+
+{#if showInitialSpinner || loading}
+	<div class="global-spinner" in:fade={{duration: 200}} out:fade={{duration: 200}}>
 		<Spinner size="large" />
 	</div>
 {:else if errorMessage}
@@ -473,21 +498,23 @@
 								</svg>
 								초대 링크 복사
 							</button>
-							<button class="action-badge font-regular" on:click={openEditMoimSheet}>
-								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-									<path d="M12 20h9"></path>
-									<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-								</svg>
-								정보 수정
-							</button>
-							<button class="action-badge warning font-regular" on:click={() => (showDeleteConfirmSheet = true)}>
-								<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-									<path d="M3 6h18"></path>
-									<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-									<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-								</svg>
-								삭제
-							</button>
+							{#if moim.creator_id === $user?.id}
+								<button class="action-badge font-regular" on:click={openEditMoimSheet}>
+									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<path d="M12 20h9"></path>
+										<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+									</svg>
+									정보 수정
+								</button>
+								<button class="action-badge warning font-regular" on:click={() => (showDeleteConfirmSheet = true)}>
+									<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<path d="M3 6h18"></path>
+										<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+										<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+									</svg>
+									삭제
+								</button>
+							{/if}
 						</div>
 					</section>
 
@@ -551,9 +578,31 @@
 								<div class="mannams-grid">
 									{#each mannams as mannam}
 										<a href="/{inviteCode}/{mannam.mannam_url}" class="mannam-card">
-											<div class="mannam-status-indicator" class:pending={mannam.status === 'pending'} class:confirmed={mannam.status === 'confirmed'}></div>
+											<div class="mannam-status-indicator" class:confirmed={mannam.status === 'confirmed'} class:cancelled={mannam.status === 'cancelled'}></div>
 											<div class="mannam-content">
-												<h3 class="mannam-title font-bold">{mannam.title}</h3>
+												<h3 class="mannam-title font-bold">
+													<span class="mannam-status-badge font-regular" class:confirmed={mannam.status === 'confirmed'} class:cancelled={mannam.status === 'cancelled'}>
+														{#if mannam.status === 'confirmed'}
+															<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+																<path d="M20 6L9 17l-5-5"></path>
+															</svg>
+															확정
+														{:else if mannam.status === 'cancelled'}
+															<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+																<line x1="18" y1="6" x2="6" y2="18"></line>
+																<line x1="6" y1="6" x2="18" y2="18"></line>
+															</svg>
+															취소
+														{:else}
+															<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+																<circle cx="12" cy="12" r="10"></circle>
+																<polyline points="12 6 12 12 16 14"></polyline>
+															</svg>
+															조율 중
+														{/if}
+													</span>
+													{mannam.title}
+												</h3>
 												{#if mannam.description}
 													<p class="mannam-description font-regular">{mannam.description}</p>
 												{/if}
@@ -609,13 +658,19 @@
 	bind:show={showToast}
 />
 
-<BottomSheet show={showJoinModal} onClose={() => (showJoinModal = false)} title="모임 참여하기">
+<BottomSheet show={showJoinModal} onClose={() => (showJoinModal = false)} title="모임 참여하기" blurBackground={true} showCloseButton={false}>
 	<div class="join-content">
 		<p class="join-message font-bold">"{moim?.title}" 모임에 참여하시겠습니까?</p>
 		<p class="join-description font-regular">모임에 참여하면 일정 조율에 참여할 수 있습니다.</p>
 		<div class="form-actions">
 			<Button variant="outline" on:click={() => (showJoinModal = false)} flex={1} class="font-regular">취소</Button>
-			<Button variant="primary" on:click={joinMoim} flex={2} class="font-bold">참여하기</Button>
+			<Button variant="primary" on:click={joinMoim} flex={2} class="font-bold">
+				{#if isJoining}
+					<Spinner size="small" />
+				{:else}
+					참여하기
+				{/if}
+			</Button>
 		</div>
 	</div>
 </BottomSheet>
@@ -680,7 +735,7 @@
 	</div>
 </BottomSheet>
 
-<BottomSheet show={showNameSheet} onClose={() => {}} title="이름 설정">
+<BottomSheet show={showNameSheet} onClose={() => {}} title="이름 설정" blurBackground={true} showCloseButton={false}>
 	<form on:submit|preventDefault={handleUpdateName} class="create-form">
 		<div class="form-group">
 			<label for="name" class="font-bold">이름</label>
@@ -887,15 +942,15 @@
 		left: 0;
 		width: 4px;
 		height: 100%;
-		background: #E5E7EB;
-	}
-
-	.mannam-status-indicator.pending {
-		background: rgba(6, 75, 69, 0.5);
+		background: rgba(251, 146, 60, 0.5);
 	}
 
 	.mannam-status-indicator.confirmed {
-		background: #064b45;
+		background: rgb(22, 163, 74);
+	}
+
+	.mannam-status-indicator.cancelled {
+		background: rgb(239, 68, 68);
 	}
 
 	.mannam-content {
@@ -906,6 +961,35 @@
 		margin: 0;
 		font-size: 1.125rem;
 		color: #111827;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.mannam-status-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.25rem 0.5rem;
+		border-radius: 9999px;
+		font-size: 0.75rem;
+		background-color: rgba(251, 146, 60, 0.15);
+		color: rgb(194, 65, 12);
+	}
+
+	.mannam-status-badge.confirmed {
+		background-color: rgba(74, 222, 128, 0.15);
+		color: rgb(22, 101, 52);
+	}
+
+	.mannam-status-badge.cancelled {
+		background-color: rgba(248, 113, 113, 0.15);
+		color: rgb(153, 27, 27);
+	}
+
+	.mannam-status-badge svg {
+		width: 14px;
+		height: 14px;
 	}
 
 	.mannam-description {

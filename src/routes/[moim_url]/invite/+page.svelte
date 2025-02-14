@@ -29,7 +29,7 @@
 			} = await supabase.auth.getSession();
 			if (session) {
 				await joinMoimByInviteCode(inviteCode);
-				goto(`/moim/${inviteCode}`);
+				goto(`/${inviteCode}`);
 			}
 		} catch (err: any) {
 			errorMessage = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
@@ -43,7 +43,7 @@
 		try {
 			socialLoading.kakao = true;
 			// 절대 URL 사용
-			const redirectUrl = `${window.location.origin}/moim/${inviteCode}`;
+			const redirectUrl = `${window.location.origin}/${inviteCode}`;
 			const { error } = await supabase.auth.signInWithOAuth({
 				provider: 'kakao',
 				options: { 
@@ -65,7 +65,7 @@
 		try {
 			socialLoading.google = true;
 			// 절대 URL 사용
-			const redirectUrl = `${window.location.origin}/moim/${inviteCode}`;
+			const redirectUrl = `${window.location.origin}/${inviteCode}`;
 			const { error } = await supabase.auth.signInWithOAuth({
 				provider: 'google',
 				options: { 
@@ -87,7 +87,7 @@
 		try {
 			socialLoading.apple = true;
 			// 절대 URL 사용
-			const redirectUrl = `${window.location.origin}/moim/${inviteCode}`;
+			const redirectUrl = `${window.location.origin}/${inviteCode}`;
 			const { error } = await supabase.auth.signInWithOAuth({
 				provider: 'apple',
 				options: { 
@@ -112,7 +112,7 @@
 		if (session) {
 			try {
 				await joinMoimByInviteCode(inviteCode);
-				goto(`/moim/${inviteCode}`);
+				goto(`/${inviteCode}`);
 			} catch (error) {
 				console.error('Failed to join moim:', error);
 				errorMessage = error instanceof Error ? error.message : '모임 참여에 실패했습니다.';

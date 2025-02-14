@@ -13,6 +13,9 @@
 	import { supabase } from '$lib/supabaseClient';
 	import Toast from '$lib/components/Toast.svelte';
 
+	let showInitialSpinner = true;
+	let profile: any = null;
+
 	// 모달 상태
 	let isModalOpen = false;
 	let isCreating = false;
@@ -21,6 +24,9 @@
 	let showNameSheet = false;
 	let userName = '';
 	let isUpdatingName = false;
+	let showProfileSheet = false;
+	let avatarSeed = '';
+	let isUpdatingProfile = false;
 
 	// 토스트 상태
 	let showToast = false;
@@ -29,12 +35,31 @@
 
 	let unsubscribe: () => void;
 
+	async function loadProfile() {
+		if (!$user) return;
+		
+		const { data, error } = await supabase
+			.from('profiles')
+			.select('*')
+			.eq('id', $user.id)
+			.single();
+			
+		if (!error && data) {
+			profile = data;
+		}
+	}
+
 	onMount(() => {
+		setTimeout(() => {
+			showInitialSpinner = false;
+		}, 300);
+
 		// 사용자 상태 구독
 		unsubscribe = user.subscribe(async ($user) => {
 			if ($user) {
+				await loadProfile();
 				// 사용자 이름이 없으면 이름 입력 시트 표시
-				if (!$user.user_metadata?.name) {
+				if (!profile?.name) {
 					showNameSheet = true;
 				}
 				try {
@@ -94,13 +119,24 @@
 
 		try {
 			isUpdatingName = true;
-			const { error } = await supabase.auth.updateUser({
+
+			// 1. Auth 메타데이터 업데이트
+			const { error: authError } = await supabase.auth.updateUser({
 				data: { name: userName.trim() }
 			});
 
-			if (error) throw error;
+			if (authError) throw authError;
 
-			// 스토어의 사용자 정보도 업데이트
+			// 2. 프로필 테이블 업데이트
+			const { error: profileError } = await supabase
+				.from('profiles')
+				.update({ name: userName.trim() })
+				.eq('id', $user.id);
+
+			if (profileError) throw profileError;
+
+			// 3. 로컬 상태 업데이트
+			profile = { ...profile, name: userName.trim() };
 			$user = {
 				...$user,
 				user_metadata: {
@@ -114,6 +150,7 @@
 			toastType = 'success';
 			showToast = true;
 		} catch (err) {
+			console.error('Failed to update name:', err);
 			toastMessage = '이름 저장에 실패했습니다';
 			toastType = 'error';
 			showToast = true;
@@ -121,10 +158,77 @@
 			isUpdatingName = false;
 		}
 	}
+
+	function openNameSheet() {
+		userName = profile?.name || '';
+		showNameSheet = true;
+	}
+
+	function openProfileSheet() {
+		userName = profile?.name || '';
+		avatarSeed = profile?.avatar_seed || profile?.name || $user?.email?.split('@')[0] || '';
+		showProfileSheet = true;
+	}
+
+	async function handleUpdateProfile() {
+		if (!userName.trim() || !$user) return;
+
+		try {
+			isUpdatingProfile = true;
+
+			// 1. Auth 메타데이터 업데이트
+			const { error: authError } = await supabase.auth.updateUser({
+				data: { name: userName.trim() }
+			});
+
+			if (authError) throw authError;
+
+			// 2. 프로필 테이블 업데이트
+			const { error: profileError } = await supabase
+				.from('profiles')
+				.update({ 
+					name: userName.trim(),
+					avatar_seed: avatarSeed
+				})
+				.eq('id', $user.id);
+
+			if (profileError) throw profileError;
+
+			// 3. 로컬 상태 업데이트
+			profile = { 
+				...profile, 
+				name: userName.trim(),
+				avatar_seed: avatarSeed
+			};
+			$user = {
+				...$user,
+				user_metadata: {
+					...$user.user_metadata,
+					name: userName.trim()
+				}
+			} as typeof $user;
+
+			showProfileSheet = false;
+			toastMessage = '프로필이 저장되었습니다';
+			toastType = 'success';
+			showToast = true;
+		} catch (err) {
+			console.error('Failed to update profile:', err);
+			toastMessage = '프로필 저장에 실패했습니다';
+			toastType = 'error';
+			showToast = true;
+		} finally {
+			isUpdatingProfile = false;
+		}
+	}
+
+	function generateNewAvatar() {
+		avatarSeed = Math.random().toString(36).substring(7);
+	}
 </script>
 
-{#if $isLoading || $authLoading}
-	<div class="global-spinner">
+{#if showInitialSpinner || $isLoading || $authLoading}
+	<div class="global-spinner" in:fade={{duration: 200}} out:fade={{duration: 200}}>
 		<Spinner size="large" />
 	</div>
 {:else if $moimError}
@@ -166,16 +270,34 @@
 			<main class="dashboard-content">
 				<section class="welcome-section">
 					<div class="welcome-content">
-						<div class="avatar">
-							<img
-								src={`https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent($user?.user_metadata?.name || $user?.email?.split('@')[0] || '')}&backgroundColor=b6e3d4`}
-								alt="프로필 아바타"
-							/>
-						</div>
+						<button class="avatar-button" on:click={openProfileSheet}>
+							<div class="avatar">
+								<img
+									src={`https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(profile?.name || $user?.email?.split('@')[0] || '')}&backgroundColor=b6e3d4`}
+									alt="프로필 아바타"
+								/>
+							</div>
+							<div class="avatar-edit-icon">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path d="M12 20h9"></path>
+									<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+								</svg>
+							</div>
+						</button>
 						<div class="welcome-text">
 							<span class="greeting-label font-regular">환영합니다</span>
 							<h1 class="user-name font-bold">
-								안녕하세요, {$user?.user_metadata?.name || $user?.email?.split('@')[0] || ''}님
+								안녕하세요, {profile?.name || $user?.email?.split('@')[0] || ''}님
 							</h1>
 						</div>
 					</div>
@@ -341,7 +463,7 @@
 </BottomSheet>
 
 {#if showNameSheet}
-	<BottomSheet show={showNameSheet} onClose={() => {}} title="이름 설정">
+	<BottomSheet show={showNameSheet} onClose={() => {}} title="이름 설정" blurBackground={true} showCloseButton={false}>
 		<form on:submit|preventDefault={handleUpdateName} class="create-form">
 			<div class="form-group">
 				<label for="name" class="font-bold">이름</label>
@@ -361,6 +483,66 @@
 					disabled={isUpdatingName}
 					loading={isUpdatingName}
 					flex={1}
+					class="font-bold"
+				>
+					저장하기
+				</Button>
+			</div>
+		</form>
+	</BottomSheet>
+{/if}
+
+{#if showProfileSheet}
+	<BottomSheet show={showProfileSheet} onClose={() => (showProfileSheet = false)} title="프로필 설정">
+		<form on:submit|preventDefault={handleUpdateProfile} class="create-form">
+			<div class="form-group">
+				<label class="font-bold">프로필 사진</label>
+				<div class="avatar-settings">
+					<div class="avatar-preview">
+						<img
+							src={`https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(avatarSeed)}&backgroundColor=b6e3d4`}
+							alt="프로필 아바타 미리보기"
+						/>
+					</div>
+					<Button
+						variant="outline"
+						on:click={generateNewAvatar}
+						type="button"
+						class="font-regular"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
+						</svg>
+						다른 이미지
+					</Button>
+				</div>
+			</div>
+			<div class="form-group">
+				<label for="name" class="font-bold">이름</label>
+				<input
+					id="name"
+					type="text"
+					bind:value={userName}
+					placeholder="이름을 입력해 주세요"
+					class="form-input font-regular"
+				/>
+				<p class="help-text font-regular">다른 사용자에게 표시될 이름입니다.</p>
+			</div>
+			<div class="form-actions">
+				<Button 
+					variant="outline" 
+					on:click={() => (showProfileSheet = false)} 
+					flex={1} 
+					class="font-regular"
+				>
+					취소
+				</Button>
+				<Button
+					variant="primary"
+					type="submit"
+					disabled={isUpdatingProfile}
+					loading={isUpdatingProfile}
+					flex={2}
 					class="font-bold"
 				>
 					저장하기
@@ -502,11 +684,33 @@
 		color: #6b7280;
 	}
 
-	.user-name {
-		margin: 0;
+	.user-name-button {
+		all: unset;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		cursor: pointer;
 		font-size: 1.25rem;
 		color: #111827;
 		line-height: 1.25;
+		padding: 0.25rem 0.5rem;
+		margin: -0.25rem -0.5rem;
+		border-radius: 0.375rem;
+		transition: all 0.2s ease;
+	}
+
+	.user-name-button:hover {
+		background: rgba(6, 75, 69, 0.05);
+	}
+
+	.user-name-button .edit-icon {
+		opacity: 0;
+		color: #064b45;
+		transition: opacity 0.2s ease;
+	}
+
+	.user-name-button:hover .edit-icon {
+		opacity: 1;
 	}
 
 	.quick-actions {
@@ -708,5 +912,65 @@
 		font-size: 0.813rem;
 		color: #6b7280;
 		margin-top: 0.25rem;
+	}
+
+	.avatar-settings {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.avatar-preview {
+		width: 4rem;
+		height: 4rem;
+		border-radius: 50%;
+		overflow: hidden;
+		background: white;
+		border: 2px solid #e5e7eb;
+	}
+
+	.avatar-preview img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.avatar-button {
+		all: unset;
+		position: relative;
+		cursor: pointer;
+		border-radius: 50%;
+		transition: transform 0.15s ease;
+	}
+
+	.avatar-button:hover {
+		transform: scale(1.02);
+	}
+
+	.avatar-button:active {
+		transform: scale(0.98);
+	}
+
+	.avatar-edit-icon {
+		position: absolute;
+		bottom: 0;
+		right: 0;
+		width: 20px;
+		height: 20px;
+		background: #064b45;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: white;
+		opacity: 0.9;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+	}
+
+	.user-name {
+		margin: 0;
+		font-size: 1.25rem;
+		color: #111827;
+		line-height: 1.25;
 	}
 </style>

@@ -19,7 +19,7 @@
 	let mannamDescription = '';
 	let mannamStartDate = '';
 	let mannamEndDate = '';
-	let mannamTimeRange = { start: '00:00', end: '23:00' };
+	let mannamTimeRange = { start: '00:00', end: '24:00' };
 	let mannamTimeSlotMinutes = 60;
 	let mannamError = '';
 

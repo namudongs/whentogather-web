@@ -100,7 +100,7 @@
                 {/if}
             </button>
             <div class="login-link">
-                계정이 없으신가요? <a href="/signup">회원가입하기</a>
+                계정이 없으신가요? <a href="/signup">이메일로 회원가입하기</a>
             </div>
             <div class="divider font-light">
                 <span>또는 아래로 계속하기</span>

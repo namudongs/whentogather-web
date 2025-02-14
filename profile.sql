@@ -51,8 +51,8 @@ BEGIN
   VALUES (
     new.id,
     new.email,
-    COALESCE(new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'full_name'),
-    new.raw_user_meta_data->>'avatar_url'
+    COALESCE(new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
+    COALESCE(new.raw_user_meta_data->>'avatar_url', 'https://api.dicebear.com/7.x/micah/svg?seed=' || url_encode(COALESCE(new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1))) || '&backgroundColor=b6e3d4')
   );
   RETURN new;
 END;
