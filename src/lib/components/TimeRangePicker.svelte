@@ -53,7 +53,6 @@
 </script>
 
 <div class="time-range-picker">
-	<label class="form-label">{label}</label>
 	<button
 		type="button"
 		class="time-picker-button"
@@ -126,14 +125,6 @@
 	.time-range-picker {
 		width: 100%;
 		position: relative;
-	}
-
-	.form-label {
-		display: block;
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: #374151;
-		margin-bottom: 0.5rem;
 	}
 
 	.time-picker-button {

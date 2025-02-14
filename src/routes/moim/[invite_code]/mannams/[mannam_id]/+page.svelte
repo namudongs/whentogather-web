@@ -8,8 +8,9 @@
 	import TimeGrid from '$lib/components/mannam/TimeGrid.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import ErrorMessage from '$lib/components/ErrorMessage.svelte';
-	import BottomSheet from '$lib/components/BottomSheet.svelte';
 	import { goto } from '$app/navigation';
+	import { fade } from 'svelte/transition';
+	import ParticipantAvatar from '$lib/components/ParticipantAvatar.svelte';
 
 	// State variables
 	let moim: any = null;
@@ -19,21 +20,11 @@
 	let error = '';
 	let heatmapData: { [key: string]: number } = {};
 	let myResponse: any = null;
-	let selectedSlots: { date: string; slot: number }[] = [];
-	let comment = '';
 
-	// 바텀 시트 제어 변수 (응답 제출용)
-	let showSubmitSheet = false;
-
-	// 응답 제출 중임을 나타내는 변수 (스피너 표시용)
-	let isSubmitting = false;
-
-	// 응답자 배지(해시태그) 색상 배열 (인덱스 mod 연산으로 사용)
-	const badgeColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
-
-	// 백업용 변수: 바텀 시트 열기 전에 현재 상태를 백업
-	let originalSlots: { date: string; slot: number }[] = [];
-	let originalComment = '';
+	interface Profile {
+		id: string;
+		name: string;
+	}
 
 	// Computed properties
 	$: isCreator = moim?.creator_id === $user?.id;
@@ -63,91 +54,79 @@
 				.from('moims')
 				.select(
 					`
-			*,
-			moim_participants!inner (*)
-		  `
+					*,
+					moim_participants!inner (*)
+				`
 				)
 				.eq('invite_code', $page.params.invite_code)
 				.single();
-			if (moimError) {
-				console.error('모임 데이터 로드 에러:', moimError);
-				throw new Error('모임 정보를 불러오는데 실패했습니다.');
-			}
-			if (!moimData) {
-				throw new Error('모임을 찾을 수 없습니다.');
-			}
+			if (moimError) throw new Error('모임 정보를 불러오는데 실패했습니다.');
+			if (!moimData) throw new Error('모임을 찾을 수 없습니다.');
 			moim = moimData;
 
 			// 3. 만남 데이터 로드
 			const { data: mannamData, error: mannamError } = await supabase
 				.from('mannams')
-				.select(
-					`
-			*,
-			moims!inner (*)
-		  `
-				)
+				.select('*')
 				.eq('id', $page.params.mannam_id)
 				.eq('moim_id', moim.id)
 				.single();
-			if (mannamError) {
-				console.error('만남 데이터 로드 에러:', mannamError);
-				throw new Error('만남 정보를 불러오는데 실패했습니다.');
-			}
-			if (!mannamData) {
-				throw new Error('만남을 찾을 수 없습니다.');
-			}
+			if (mannamError) throw new Error('만남 정보를 불러오는데 실패했습니다.');
+			if (!mannamData) throw new Error('만남을 찾을 수 없습니다.');
 			mannam = mannamData;
 
 			// 4. 응답 데이터 로드
-			const { data: rawResponseData, error: responseError } = await supabase
+			const { data: responsesData, error: responsesError } = await supabase
 				.from('mannam_responses')
 				.select('*')
 				.eq('mannam_id', mannam.id);
-			let responseData = rawResponseData;
-			if (responseData) {
-				// 프로필 정보 가져오기
-				const userIds = responseData.map((response) => response.user_id);
-				const { data: profileData } = await supabase
-					.from('profiles')
-					.select('id, full_name, avatar_url')
-					.in('id', userIds);
-				// 응답 데이터와 프로필 정보 합치기
-				responseData = responseData.map((response) => ({
-					...response,
-					profile: profileData?.find((profile) => profile.id === response.user_id)
-				}));
-			}
-			if (responseError) {
-				console.error('응답 데이터 로드 에러:', responseError);
+			if (responsesError) {
+				console.error('응답 데이터 로드 에러:', responsesError);
 				throw new Error('응답 정보를 불러오는데 실패했습니다.');
 			}
-			responses = responseData || [];
+			
+			// 프로필 정보 별도로 로드
+			const userIds = responsesData.map(r => r.user_id);
+			
+			// 응답이 있는 경우에만 프로필 정보 로드
+			let profilesData: Profile[] = [];
+			if (userIds.length > 0) {
+				const { data, error: profilesError } = await supabase
+					.from('profiles')
+					.select('id, name')
+					.in('id', userIds);
 
-			// 히트맵 데이터 계산
-			heatmapData = {};
-			responses.forEach((response) => {
-				const slots =
-					typeof response.available_slots === 'string'
-						? JSON.parse(response.available_slots)
-						: response.available_slots;
-				if (Array.isArray(slots)) {
-					slots.forEach((slot: { date: string; slot: number }) => {
-						const key = `${slot.date}-${slot.slot}`;
-						heatmapData[key] = (heatmapData[key] || 0) + 1;
-					});
+				if (profilesError) {
+					console.error('프로필 데이터 로드 에러:', profilesError);
+					throw new Error('프로필 정보를 불러오는데 실패했습니다.');
 				}
-			});
-
-			// 내 응답 찾기
-			myResponse = responses.find((response) => response.user_id === $user?.id);
-			if (myResponse) {
-				selectedSlots =
-					typeof myResponse.available_slots === 'string'
-						? JSON.parse(myResponse.available_slots)
-						: myResponse.available_slots;
-				comment = myResponse.comment || '';
+				profilesData = data || [];
 			}
+
+			// 응답 데이터와 프로필 정보 매핑
+			responses = responsesData.map(response => ({
+				...response,
+				user: profilesData.find(p => p.id === response.user_id) || { name: '이름없음' }
+			}));
+
+			// 5. 내 응답 찾기
+			myResponse = responses.find((response) => response.user_id === $user?.id);
+
+			// 6. 히트맵 데이터 생성
+			heatmapData = responses.reduce((acc: any, response) => {
+				try {
+					const slots = Array.isArray(response.available_slots) 
+						? response.available_slots 
+						: JSON.parse(response.available_slots || '[]');
+					slots.forEach((slot: any) => {
+						const key = `${slot.date}-${slot.slot}`;
+						acc[key] = (acc[key] || 0) + 1;
+					});
+				} catch (err) {
+					console.error('히트맵 데이터 생성 중 에러:', err);
+				}
+				return acc;
+			}, {});
 		} catch (err) {
 			console.error('데이터 로드 중 에러 발생:', err);
 			error = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
@@ -155,91 +134,48 @@
 			loading = false;
 		}
 	}
-
-	// 응답 제출 함수 (버튼 클릭 시 스피너 표시)
-	async function handleSubmitResponse() {
-		if (!$user) {
-			error = '로그인이 필요합니다.';
-			return;
-		}
-		isSubmitting = true;
-		try {
-			const responseData = {
-				mannam_id: mannam.id,
-				user_id: $user.id,
-				available_slots: selectedSlots,
-				comment
-			};
-			let result;
-			if (myResponse) {
-				result = await supabase
-					.from('mannam_responses')
-					.update(responseData)
-					.eq('id', myResponse.id);
-			} else {
-				result = await supabase.from('mannam_responses').insert(responseData);
-			}
-			if (result.error) throw result.error;
-			showSubmitSheet = false;
-			// 응답 제출 후 데이터 다시 로드
-			await loadData();
-		} catch (err) {
-			error = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
-		} finally {
-			isSubmitting = false;
-		}
-	}
-
-	// TimeGrid의 슬롯 선택 변경 핸들러
-	function handleSlotsChange(event: CustomEvent) {
-		selectedSlots = event.detail.slots;
-	}
-
-	// 응답 제출 바텀 시트를 열기 전에 현재 상태 백업
-	function openSubmitSheet() {
-		originalSlots = JSON.parse(JSON.stringify(selectedSlots));
-		originalComment = comment;
-		showSubmitSheet = true;
-	}
 </script>
 
 {#if loading}
-	<div class="global-spinner">
-		<Spinner size="large" />
+	<div class="flex justify-center items-center h-32">
+		<Spinner />
 	</div>
 {:else if error}
 	<div class="error-container">
 		<ErrorMessage message={error} />
 	</div>
 {:else}
-	<div class="moim-container">
+	<div class="moim-container" in:fade={{duration: 200}}>
 		<div class="moim-content-wrapper">
 			<header class="moim-header">
-				<button class="back-btn" on:click={() => history.back()} aria-label="뒤로가기">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="24"
-						height="24"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					>
-						<path d="M19 12H5M12 19l-7-7 7-7" />
-					</svg>
-				</button>
-				<h1 class="moim-title">{mannam.title}</h1>
+				<div class="header-content">
+					<button class="back-btn font-regular" on:click={() => history.back()}>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="24"
+							height="24"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="M19 12H5M12 19l-7-7 7-7" />
+						</svg>
+					</button>
+					<div class="title-with-badge">
+						<span class="header-badge font-regular">만남</span>
+						<h1 class="moim-title font-extrabold">{mannam.title}</h1>
+					</div>
+				</div>
 			</header>
 
 			<main class="moim-content">
 				<!-- 만남 정보 섹션 -->
-				<div class="info-box">
+				<section class="moim-description-section">
 					{#if mannam.description}
-						<p class="section-description">{mannam.description}</p>
-					{:else}
-						<p class="no-description">설명 없음</p>
+						<p class="moim-description font-regular">{mannam.description}</p>
 					{/if}
 					<div class="meta">
 						<div class="info-item">
@@ -280,166 +216,214 @@
 							>
 						</div>
 					</div>
-				</div>
+				</section>
 
-				<!-- 전체 응답 현황 섹션 -->
-				<div class="info-box response-status">
-					<h2 class="section-title">전체 응답 현황</h2>
-					<TimeGrid
-						startDate={mannam.start_date}
-						endDate={mannam.end_date}
-						timeRange={mannam.time_range}
-						timeSlotMinutes={mannam.time_slot_minutes}
-						readOnly={true}
-						{heatmapData}
-					/>
-					<p class="grid-caption">* 색상이 진할수록 더 많은 참여자가 가능한 시간입니다.</p>
-					
-					<!-- 응답자 해시태그 -->
-					<div class="badge-container">
-						{#each responses as response, index}
-							<span
-								class="response-badge"
-								style="background-color: {badgeColors[index % badgeColors.length]};"
-							>
-								#{response.profile?.full_name || '이름 없음'}
-							</span>
+				<!-- 응답자 섹션 -->
+				<section class="moim-section">
+					<div class="section-header">
+						<div class="title-with-badge">
+							<h2 class="section-title font-bold">응답자</h2>
+							<div class="count-badge font-regular">
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+									<circle cx="9" cy="7" r="4"></circle>
+									<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+									<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+								</svg>
+								{responses.length}명
+							</div>
+						</div>
+					</div>
+					<div class="participants-grid">
+						{#each responses as response}
+							<ParticipantAvatar
+								name={response.user?.name || '이름없음'}
+								role="participant"
+							/>
 						{/each}
 					</div>
-				</div>
-			</main>
+				</section>
 
-			<!-- 하단 커스텀 버튼 (응답 제출하기 버튼) -->
-			<div class="button-row">
-				<button class="custom-btn submit-btn" on:click={openSubmitSheet}> 응답 제출하기 </button>
-			</div>
+				<!-- 응답하기 버튼 섹션 -->
+				<section class="response-button-section">
+					<button 
+						type="button"
+						class="create-btn font-bold"
+						class:responded={myResponse}
+						on:click={() => goto(`/moim/${$page.params.invite_code}/mannams/${$page.params.mannam_id}/respond`)}
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+							<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+						</svg>
+						{myResponse ? '응답 수정하기' : '시간 조율 응답하기'}
+					</button>
+				</section>
+
+				<!-- 전체 응답 현황 섹션 -->
+				<section class="moim-section">
+					<div class="section-header">
+						<div class="title-with-badge">
+							<h2 class="section-title font-bold">응답 현황</h2>
+						</div>
+					</div>
+
+					<div class="grid-container">
+						<TimeGrid
+							startDate={mannam.start_date}
+							endDate={mannam.end_date}
+							timeRange={mannam.time_range}
+							timeSlotMinutes={mannam.time_slot_minutes}
+							{heatmapData}
+							readOnly={true}
+						/>
+					</div>
+
+					{#if responses.length > 0}
+						<div class="responses-list">
+							{#each responses as response}
+								{#if response.comment}
+									<div class="response-item">
+										<div class="response-header">
+											<span class="response-name font-bold">{response.user?.name || '이름없음'}</span>
+											<span class="response-comment font-regular">{response.comment}</span>
+										</div>
+									</div>
+								{/if}
+							{/each}
+						</div>
+					{:else}
+						<div class="empty-state">
+							<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+								<circle cx="9" cy="7" r="4"></circle>
+								<path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+								<path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+							</svg>
+							<p class="font-regular">아직 응답이 없습니다</p>
+							<p class="subtitle font-light">첫 번째로 응답해보세요</p>
+						</div>
+					{/if}
+				</section>
+			</main>
 		</div>
 	</div>
 {/if}
 
-<!-- 응답 제출 바텀 시트 -->
-<BottomSheet
-	show={showSubmitSheet}
-	onClose={() => {
-		// 취소 시 백업된 상태로 복원
-		selectedSlots = JSON.parse(JSON.stringify(originalSlots));
-		comment = originalComment;
-		showSubmitSheet = false;
-	}}
-	title="응답 제출"
-	blurBackground={true}
->
-	<div class="submit-sheet-content">
-		{#if mannam.status === 'pending'}
-			<div class="grid-container">
-				<TimeGrid
-					startDate={mannam.start_date}
-					endDate={mannam.end_date}
-					timeRange={mannam.time_range}
-					timeSlotMinutes={mannam.time_slot_minutes}
-					{selectedSlots}
-					on:change={handleSlotsChange}
-				/>
-			</div>
-			<div class="form-group">
-				<label for="comment" class="form-label">코멘트 (선택사항)</label>
-				<!-- svelte-ignore element_invalid_self_closing_tag -->
-				<textarea
-					id="comment"
-					bind:value={comment}
-					class="form-input"
-					placeholder="코멘트를 입력하세요..."
-				/>
-			</div>
-			<div class="sheet-actions">
-				<button
-					class="sheet-btn cancel-btn"
-					on:click={() => {
-						// 취소 시 백업된 값으로 복원
-						selectedSlots = JSON.parse(JSON.stringify(originalSlots));
-						comment = originalComment;
-						showSubmitSheet = false;
-					}}>취소</button
-				>
-				<button class="sheet-btn submit-btn" on:click={handleSubmitResponse}>
-					{#if isSubmitting}
-						<Spinner size="small" />
-						<span class="submit-text">제출 중</span>
-					{:else}
-						응답 제출
-					{/if}
-				</button>
-			</div>
-		{:else}
-			<div class="info-message">이미 확정된 만남은 응답을 제출할 수 없습니다.</div>
-		{/if}
-	</div>
-</BottomSheet>
-
 <style>
 	:global(body) {
-		background-color: white;
 		margin: 0;
-		font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-	}
-	.moim-container {
-		width: 100%;
-		max-width: 500px;
-		margin: 0 auto;
-	}
-	.moim-content-wrapper {
 		background: white;
 	}
+
+	.global-spinner {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100vw;
+		height: 100vh;
+		background: #ffffff;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+	}
+
+	.error-container {
+		max-width: 500px;
+		margin: 2rem auto;
+		padding: 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.moim-container {
+		width: 100%;
+		min-height: 100vh;
+		background: white;
+	}
+
+	.moim-content-wrapper {
+		max-width: 500px;
+		margin: 0 auto;
+		padding: 1rem;
+	}
+
 	.moim-header {
+		position: sticky;
+		top: 0;
+		background: white;
+		padding: 0.5rem 0;
+		border-bottom: 1px solid #e5e7eb;
+		margin-bottom: 1.25rem;
+		z-index: 100;
+	}
+
+	.header-content {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
-		padding: 1rem;
-		border-bottom: 1px solid #f0f0f0;
+		padding: 0 0.5rem;
 	}
+
 	.back-btn {
 		background: none;
 		border: none;
-		padding: 0;
+		padding: 0.5rem;
+		margin-left: -0.5rem;
 		cursor: pointer;
 		color: #064b45;
+		line-height: 0;
+	}
+
+	.moim-title {
+		margin: 0;
+		font-size: 1.25rem;
+		color: #111827;
+	}
+
+	.moim-content {
+		padding: 0 0.5rem;
+	}
+
+	.title-with-badge {
 		display: flex;
 		align-items: center;
+		gap: 0.5rem;
 	}
-	.moim-title {
-		font-size: 1.25rem;
-		font-weight: 600;
+
+	.header-badge {
+		padding: 0.25rem 0.5rem;
+		background-color: #064b45;
+		color: white;
+		border-radius: 9999px;
+		font-size: 0.75rem;
+	}
+
+	.moim-description-section {
+		margin-bottom: 2rem;
+		padding: 1.5rem;
+		background: #f8fafc;
+		border-radius: 0.75rem;
+	}
+
+	.moim-description {
 		margin: 0;
-		color: #111827;
-	}
-	.moim-content {
-		padding: 1rem;
-	}
-	.info-box {
-		background: #f9fafb;
-		padding: 1rem;
-		border-radius: 8px;
-		margin-bottom: 1rem;
-	}
-	.section-title {
-		font-size: 1.125rem;
-		font-weight: 600;
-		margin: 0 0 1rem 0;
-		color: #111827;
-	}
-	.section-description,
-	.no-description {
-		margin: 0 0 1rem 0;
-		color: #4b5563;
 		font-size: 0.875rem;
-		line-height: 1.5;
+		line-height: 1.6;
+		color: #374151;
 	}
+
 	.meta {
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
-		margin-bottom: 2rem;
+		margin-top: 1rem;
+		padding-top: 1rem;
+		border-top: 1px solid #e5e7eb;
 	}
+
 	.info-item {
 		display: flex;
 		align-items: center;
@@ -447,140 +431,145 @@
 		color: #6b7280;
 		font-size: 0.875rem;
 	}
+
 	.info-icon {
 		width: 1.25rem;
 		height: 1.25rem;
 	}
-	.grid-container {
-		display: flex;
-		justify-content: center;
-		margin: 1rem 0;
+
+	.moim-section {
+		margin-bottom: 2rem;
 	}
-	.badge-container {
+
+	.section-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 1.5rem;
+	}
+
+	.section-title {
+		font-size: 1.25rem;
+		color: #111827;
+		margin: 0;
+	}
+
+	.count-badge {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.25rem 0.5rem;
+		background-color: rgb(243 244 246);
+		border-radius: 9999px;
+		font-size: 0.875rem;
+	}
+
+	.grid-container {
+		margin-bottom: 1.5rem;
+	}
+
+	.responses-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.response-item {
+		padding: 1rem;
+		background: white;
+		border: 1px solid #e5e7eb;
+		border-radius: 0.5rem;
+	}
+
+	.response-header {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.response-name {
+		font-size: 0.875rem;
+		color: #111827;
+	}
+
+	.response-comment {
+		font-size: 0.875rem;
+		color: #6b7280;
+	}
+
+	.empty-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 3rem;
+		background: #f8fafc;
+		border-radius: 0.75rem;
+		color: #374151;
+		text-align: center;
+	}
+
+	.empty-state svg {
+		color: #9ca3af;
+		margin-bottom: 1rem;
+	}
+
+	.empty-state p {
+		margin: 0;
+		font-size: 0.875rem;
+	}
+
+	.empty-state .subtitle {
+		font-size: 0.875rem;
+		color: #6b7280;
+		margin-top: 0.25rem;
+	}
+
+	.response-button-section {
+		margin-bottom: 2rem;
+	}
+
+	.create-btn {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.75rem;
+		font-size: 0.875rem;
+		background-color: #064b45;
+		color: white;
+		border: 1px solid #064b45;
+		border-radius: 0.5rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.create-btn:hover {
+		background-color: #053c37;
+		border-color: #053c37;
+	}
+
+	.create-btn.responded {
+		background-color: white;
+		color: #064b45;
+		border: 1px solid #064b45;
+	}
+
+	.create-btn.responded:hover {
+		background-color: #f8fafc;
+	}
+
+	.create-btn svg {
+		width: 1.25rem;
+		height: 1.25rem;
+	}
+
+	.participants-grid {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;
-		margin-top: 0.5rem;
-	}
-	.response-badge {
-		padding: 0.25rem 0.5rem;
-		border-radius: 4px;
-		font-size: 0.75rem;
-		font-weight: 500;
-		color: white;
-	}
-	.button-row {
-		padding: 1rem;
-		background: white;
-		position: sticky;
-		bottom: 0;
-	}
-	.custom-btn.submit-btn {
-		width: 100%;
-		padding: 0.875rem;
-		border: none;
-		border-radius: 4px;
-		background-color: #064b45;
-		color: white;
-		font-size: 1rem;
-		font-weight: 500;
-		cursor: pointer;
-	}
-	.global-spinner {
-		position: fixed;
-		inset: 0;
-		z-index: 50;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background-color: rgba(255, 255, 255, 0.75);
-	}
-	.error-container {
-		position: fixed;
-		inset: 0;
-		z-index: 50;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background-color: rgba(255, 255, 255, 0.75);
-	}
-	/* BottomSheet 내부 스타일 */
-	.submit-sheet-content {
-		padding: 1rem;
-	}
-	.submit-sheet-content .grid-container {
-		margin-bottom: 1rem;
-	}
-	.form-group {
-		margin-top: 1.5rem;
-	}
-	.form-label {
-		display: block;
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: #374151;
-		margin-bottom: 0.5rem;
-	}
-	.form-input {
-		width: 100%;
-		padding: 0.75rem;
-		border: 1px solid #d1d5db;
-		border-radius: 4px;
-		font-size: 0.875rem;
-		resize: vertical;
-	}
-	.form-input:focus {
-		outline: none;
-		border-color: #064b45;
-		box-shadow: 0 0 0 2px rgba(6, 75, 69, 0.1);
-	}
-	.sheet-actions {
-		display: flex;
-		gap: 0.75rem;
-		margin-top: 1.5rem;
-	}
-	.sheet-btn {
-		flex: 1;
-		padding: 0.875rem;
-		border: none;
-		border-radius: 4px;
-		font-size: 1rem;
-		font-weight: 500;
-		cursor: pointer;
-	}
-	.sheet-btn.cancel-btn {
-		background-color: #f3f4f6;
-		color: #374151;
-	}
-	.sheet-btn.submit-btn {
-		background-color: #064b45;
-		color: white;
-	}
-	.submit-btn {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		white-space: nowrap;
-		gap: 0.5rem;
-		padding: 0.75rem;
-		border: none;
-		border-radius: 0.5rem;
-		font-size: 1rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: background-color 0.2s;
-		background-color: #064b45;
-		color: white;
-	}
-	.response-status {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-	.grid-caption {
-		font-size: 0.75rem;
-		color: #6b7280;
-		margin: 0.5rem 0 0 0;
-		text-align: center;
+		margin: -0.25rem;
+		padding: 0.25rem;
 	}
 </style>
