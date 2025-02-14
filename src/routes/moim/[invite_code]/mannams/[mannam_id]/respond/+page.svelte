@@ -20,7 +20,7 @@
 	// 응답 데이터
 	interface TimeSlot {
 		date: string;
-		slot: number;
+		slot: string;
 	}
 	let selectedSlots: TimeSlot[] = [];
 	let comment = '';
@@ -83,8 +83,8 @@
 			if (responseData) {
 				myResponse = responseData;
 				selectedSlots = Array.isArray(responseData.available_slots)
-					? responseData.available_slots.map((slot: any) => ({ date: slot.date, slot: slot.slot }))
-					: JSON.parse(responseData.available_slots || '[]').map((slot: any) => ({ date: slot.date, slot: slot.slot }));
+					? responseData.available_slots
+					: JSON.parse(responseData.available_slots || '[]');
 				comment = responseData.comment || '';
 				
 				// 백업
@@ -218,6 +218,7 @@
 								timeRange={mannam.time_range}
 								timeSlotMinutes={mannam.time_slot_minutes}
 								selectedSlots={selectedSlots}
+								readOnly={false}
 								on:change={handleSlotsChange}
 							/>
 						</div>

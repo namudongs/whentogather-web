@@ -255,6 +255,14 @@
 								</svg>
 								만남 정보 수정
 							</button>
+							{#if responses.length > 0}
+								<button class="badge-button confirm" on:click={() => goto(`/moim/${$page.params.invite_code}/mannams/${$page.params.mannam_id}/confirm`)}>
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<path d="M20 6L9 17l-5-5"></path>
+									</svg>
+									시간 확정하기
+								</button>
+							{/if}
 							<button class="badge-button delete" on:click={() => isDeleteSheetOpen = true}>
 								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 									<path d="M3 6h18"></path>
@@ -324,6 +332,7 @@
 							timeSlotMinutes={mannam.time_slot_minutes}
 							{heatmapData}
 							readOnly={true}
+							confirmedSlots={mannam.confirmed_slots || []}
 						/>
 					</div>
 
@@ -836,5 +845,17 @@
 	.sheet-buttons .sheet-button.cancel:hover {
 		background-color: #e5e7eb;
 		border-color: #d1d5db;
+	}
+
+	.badge-button.confirm {
+		background: white;
+		border-color: #e5e7eb;
+		color: #374151;
+	}
+
+	.badge-button.confirm:hover {
+		border-color: #064b45;
+		color: #064b45;
+		background: white;
 	}
 </style>
