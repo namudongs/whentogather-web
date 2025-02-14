@@ -24,8 +24,8 @@
 </script>
 
 <svelte:head>
-    <title>언제모여 - 모임 시간 정하기</title>
-    <meta name="description" content="모임 시간을 쉽게 정하세요" />
+    <title>언제모여 - 모일 시간 조율하기</title>
+    <meta name="description" content="회의, 파티, 모임 등 모일 시간을 쉽게 조율하세요!" />
 </svelte:head>
 
 <div class="loading">
